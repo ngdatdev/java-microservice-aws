@@ -20,12 +20,19 @@ cd services/member-service
 mvn clean package -DskipTests
 ```
 
-## Step 3: Start Environment
+## Step 3: Start Environment & Infrastructure
 Run the Docker Compose stack:
 ```bash
 docker-compose up -d
 ```
 
+Deploy LocalStack AWS Infrastructure using `cdklocal`:
+```bash
+cd infra
+npm install
+npx cdklocal bootstrap
+npx cdklocal deploy --require-approval never
+```
 ## Step 4: Verify
 Check service health via curl or browser:
 - Member Service: `http://localhost:8081/health`

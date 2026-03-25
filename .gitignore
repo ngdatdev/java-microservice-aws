@@ -66,3 +66,4 @@ init_services.ps1
 scaffold_configs.ps1
 fix_yml.ps1
 test.zip
+.gitnexus

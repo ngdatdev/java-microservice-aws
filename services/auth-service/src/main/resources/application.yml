@@ -36,12 +36,12 @@ aws:
   region: ${AWS_REGION:ap-northeast-1}
   cognito:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    user-pool-id: ap-northeast-1_demo_pool
-    client-id: demo_client_id
+    user-pool-id: ${COGNITO_USER_POOL_ID:ap-northeast-1_demo_pool}
+    client-id: ${COGNITO_CLIENT_ID:demo_client_id}
 
 jwt:
-  secret: dGhpcy1pcy1hLXZlcnktc2VjdXJlLWtleS0zMi1ieXRlcy1sb25nLWZvci10ZXN0aW5n
-  expiration: 86400000
+  secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktc2VjdXJlLWtleS0zMi1ieXRlcy1sb25nLWZvci10ZXN0aW5n}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 logging:
   level:

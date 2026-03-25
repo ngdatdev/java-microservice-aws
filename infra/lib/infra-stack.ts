@@ -3,7 +3,6 @@ import { Construct } from 'constructs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 
 export class InfraStack extends cdk.Stack {
@@ -32,10 +31,14 @@ export class InfraStack extends cdk.Stack {
     const fileStorageBucket = new s3.Bucket(this, 'FileStorageBucket', {
       bucketName: 'demo-file-storage',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
     });
 
-    // 5. Cognito User Pool
+    // NOTE: Cognito User Pool is not supported in LocalStack Community Edition.
+    // For local development, the Auth Service uses direct config via application.yml.
+    // When deploying to real AWS, uncomment the Cognito section below.
+    /*
+    import * as cognito from 'aws-cdk-lib/aws-cognito';
+
     const userPool = new cognito.UserPool(this, 'DemoUserPool', {
       userPoolName: 'demo-user-pool',
       selfSignUpEnabled: true,
@@ -46,18 +49,17 @@ export class InfraStack extends cdk.Stack {
     const userPoolClient = userPool.addClient('DemoAppClient', {
       userPoolClientName: 'demo-app-client',
       authFlows: {
-        adminNoSrp: true,
+        adminUserPassword: true,
         custom: true,
         userPassword: true,
       },
     });
+    */
 
     // Outputs
     new cdk.CfnOutput(this, 'MemberEventsTopicArn', { value: memberEventsTopic.topicArn });
     new cdk.CfnOutput(this, 'FileEventsTopicArn', { value: fileEventsTopic.topicArn });
     new cdk.CfnOutput(this, 'MailQueueUrl', { value: mailQueue.queueUrl });
     new cdk.CfnOutput(this, 'FileStorageBucketName', { value: fileStorageBucket.bucketName });
-    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
-    new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
   }
 }

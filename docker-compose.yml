@@ -23,7 +23,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=s3,ses,sns,sqs
+      - SERVICES=s3,ses,sns,sqs,cognito-idp,iam,sts,ec2,rds,cloudformation,ssm,lambda
       - DEFAULT_REGION=ap-northeast-1
       - DEBUG=1
     volumes:

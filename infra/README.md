@@ -1,14 +1,29 @@
-# Welcome to your CDK TypeScript project
+# Demo AWS CDK Infrastructure
 
-This is a blank project for CDK development with TypeScript.
+This project contains the CDK infrastructure stack for the AWS Microservices Demo.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Local Development (LocalStack)
 
-## Useful commands
+To deploy the infrastructure locally:
+1. Ensure LocalStack is running via docker-compose (`docker-compose up -d localstack`).
+2. Run initial bootstrap:
+   ```bash
+   npx cdklocal bootstrap
+   ```
+3. Deploy the stack:
+   ```bash
+   npx cdklocal deploy --require-approval never
+   ```
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+## AWS Deployment
+
+To deploy to a real AWS environment:
+1. Configure your AWS credentials.
+2. Run standard bootstrap:
+   ```bash
+   npx cdk bootstrap
+   ```
+3. Deploy the stack:
+   ```bash
+   npx cdk deploy
+   ```

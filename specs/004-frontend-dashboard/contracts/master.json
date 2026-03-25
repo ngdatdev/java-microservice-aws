@@ -1,0 +1,13 @@
+{
+  "totalMembers": 0,
+  "totalFiles": 0,
+  "activeMembers": 0,
+  "recentActivities": [
+    {
+      "id": "string",
+      "type": "MEMBER_CREATED | FILE_UPLOADED",
+      "description": "string",
+      "timestamp": "ISO Date"
+    }
+  ]
+}
