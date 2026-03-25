@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/auth_db
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# AWS Simulation (LocalStack)
+aws:
+  region: ${AWS_REGION:ap-northeast-1}
+  s3:
+    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+  sqs:
+    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+  sns:
+    endpoint: ${LOCALSTACK_URL:http://localhost:4566}

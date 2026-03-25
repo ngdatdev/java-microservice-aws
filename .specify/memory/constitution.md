@@ -1,50 +1,52 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- 
+Sync Impact Report:
+- Version change: 1.0.0 -> 1.1.0
+- List of modified principles: 
+    - Tech Stack Consistency (added Tailwind CSS and explicitly named Next.js 14).
+    - Observability (added port ranges 8081-8085).
+    - Security (explicitly named IAM least privilege).
+- Added sections: Detailed Service Mapping (SES, SQS, SNS, CloudFront).
+- Templates requiring updates: ✅ All updated.
+- Follow-up TODOs: Ensure Docker Compose health checks match port assignments.
+-->
+# AWS Microservice Demo Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Demo-First Architectures
+The primary goal is to provide working demonstrations of various AWS services. Code quality should be high enough for learning, but speed of integration and correct pattern usage take precedence over production-grade optimizations (e.g., massive scale handling or complex business logic).
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Minimal Business Logic
+Functionality should remain simple. The complexity of the project should reside in the Infrastructure as Code (IaC) and the integration between services (SNS, SQS, SES, S3) rather than deep domain logic. Focus on "How to connect A to B" on AWS.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Tech Stack Consistency
+All microservices MUST use **Java 17** and **Spring Boot 3.x** with Maven. The frontend MUST use **Next.js 14** with the App Router, TypeScript, and Tailwind CSS. Infrastructure MUST be managed using **AWS CDK (TypeScript)**.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Observability & Port Standardization
+Every service MUST implement health check endpoints (`/health`) and stream logs to Amazon CloudWatch. 
+- **Port Mapping**: Member (8081), File (8082), Mail (8083), Auth (8084), Master (8085).
+- **Frontend**: Port 3000.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Security via Managed Services
+Offload security responsibilities to AWS managed services:
+- **Auth**: Amazon Cognito.
+- **Secrets**: AWS Secrets Manager (for DB credentials).
+- **Permissions**: IAM roles with the **Principle of Least Privilege**.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## AWS Infrastructure Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+The solution must be strictly serverless or managed:
+- **Compute**: ECS Fargate is mandatory.
+- **Database**: Amazon RDS PostgreSQL (db.t3.micro).
+- **Network**: VPC with public/private subnets. API Gateway + internal NLB + CloudFront for edge delivery.
+- **Messaging**: SNS for broadcasting, SQS for decoupling.
+- **DevOps**: CodeCommit + CodeBuild + CodePipeline for CI/CD.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+The project is structured as a monorepo. Local development MUST be supported via **Docker Compose**, utilizing **LocalStack** to mock AWS services (S3, SES, SNS, SQS) to avoid cloud costs. A `.env.example` must be maintained at the root.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+This constitution governs all architectural decisions. Any deviation must be documented.
+**Version**: 1.1.0 | **Ratified**: 2026-03-25 | **Last Amended**: 2026-03-25

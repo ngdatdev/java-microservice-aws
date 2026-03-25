@@ -1,0 +1,5 @@
+CREATE DATABASE member_db;
+CREATE DATABASE file_db;
+CREATE DATABASE mail_db;
+CREATE DATABASE auth_db;
+CREATE DATABASE master_db;

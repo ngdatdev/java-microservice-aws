@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: demo-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: demo-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,ses,sns,sqs
+      - DEFAULT_REGION=ap-northeast-1
+      - DEBUG=1
+    volumes:
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init-resources.sh
+
+  member-service:
+    build: ./services/member-service
+    container_name: member-service
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/member_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - LOCALSTACK_URL=http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  file-service:
+    build: ./services/file-service
+    container_name: file-service
+    ports:
+      - "8082:8080"
+    environment:
+      - DB_HOST=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/file_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - LOCALSTACK_URL=http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mail-service:
+    build: ./services/mail-service
+    container_name: mail-service
+    ports:
+      - "8083:8080"
+    environment:
+      - DB_HOST=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mail_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - LOCALSTACK_URL=http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    ports:
+      - "8084:8080"
+    environment:
+      - DB_HOST=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - LOCALSTACK_URL=http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  master-service:
+    build: ./services/master-service
+    container_name: master-service
+    ports:
+      - "8085:8080"
+    environment:
+      - DB_HOST=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/master_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - LOCALSTACK_URL=http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: demo-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8085 # Proxy through master service or direct
+    depends_on:
+      - master-service
