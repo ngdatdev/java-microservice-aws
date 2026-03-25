@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8085
 
 spring:
   application:
@@ -16,13 +16,17 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    user:
+      name: user
+      password: password
 
 management:
   endpoints:
     web:
       base-path: /
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
@@ -30,9 +34,18 @@ management:
 # AWS Simulation (LocalStack)
 aws:
   region: ${AWS_REGION:ap-northeast-1}
-  s3:
+  cognito:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sqs:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sns:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    user-pool-id: ap-northeast-1_demo_pool
+    client-id: demo_client_id
+
+jwt:
+  secret: dGhpcy1pcy1hLXZlcnktc2VjdXJlLWtleS0zMi1ieXRlcy1sb25nLWZvci10ZXN0aW5n
+  expiration: 86400000
+
+logging:
+  level:
+    root: INFO
+    com.demo.auth: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

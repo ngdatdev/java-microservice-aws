@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8084
 
 spring:
   application:
@@ -22,17 +22,20 @@ management:
     web:
       base-path: /
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
 
-# AWS Simulation (LocalStack)
-aws:
-  region: ${AWS_REGION:ap-northeast-1}
-  s3:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sqs:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sns:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+services:
+  member:
+    url: ${MEMBER_SERVICE_URL:http://localhost:8081}
+  file:
+    url: ${FILE_SERVICE_URL:http://localhost:8082}
+
+logging:
+  level:
+    root: INFO
+    com.demo.master: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

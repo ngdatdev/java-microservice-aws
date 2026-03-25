@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8083
 
 spring:
   application:
@@ -22,7 +22,7 @@ management:
     web:
       base-path: /
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
@@ -30,9 +30,16 @@ management:
 # AWS Simulation (LocalStack)
 aws:
   region: ${AWS_REGION:ap-northeast-1}
-  s3:
+  ses:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    from-email: no-reply@demo.com
   sqs:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sns:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    mail-queue-url: http://localhost:4566/000000000000/mail-queue
+
+logging:
+  level:
+    root: INFO
+    com.demo.mail: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

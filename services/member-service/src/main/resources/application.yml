@@ -22,7 +22,7 @@ management:
     web:
       base-path: /
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
@@ -30,9 +30,16 @@ management:
 # AWS Simulation (LocalStack)
 aws:
   region: ${AWS_REGION:ap-northeast-1}
-  s3:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-  sqs:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
   sns:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    topic-arn: arn:aws:sns:ap-northeast-1:000000000000:global-notifications
+  sqs:
+    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    queue-url: http://localhost:4566/000000000000/audit-queue
+
+logging:
+  level:
+    root: INFO
+    com.demo.member: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
