@@ -23,12 +23,12 @@ import {
 import { Member, MemberRequest } from "@/types/member";
 import { useEffect } from "react";
 
-const memberSchema = z.z.object({
-  firstName: z.z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.z.string().email("Invalid email address"),
-  phoneNumber: z.z.string().min(10, "Phone number must be at least 10 digits"),
-  status: z.z.enum(["ACTIVE", "INACTIVE"]),
+const memberSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
 });
 
 interface MemberFormProps {
@@ -38,7 +38,7 @@ interface MemberFormProps {
 }
 
 export function MemberForm({ member, onSubmit, isLoading }: MemberFormProps) {
-  const form = useForm<z.z.infer<typeof memberSchema>>({
+  const form = useForm<z.infer<typeof memberSchema>>({
     resolver: zodResolver(memberSchema),
     defaultValues: {
       firstName: "",

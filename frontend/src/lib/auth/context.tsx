@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem("auth_token", access_token);
       localStorage.setItem("auth_user", JSON.stringify(userObj));
-      
+
       setUser(userObj);
       toast.success("Login successful", {
         description: `Welcome back, ${email}`,
@@ -77,9 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.success("Registration successful", {
         description: "Please sign in with your new account.",
       });
-      router.push("/auth/login");
+      router.push("/login");
     } catch (error) {
-       throw error;
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("auth_user");
     setUser(null);
     toast.success("Logged out successfully");
-    router.push("/auth/login");
+    router.push("/login");
   };
 
   return (

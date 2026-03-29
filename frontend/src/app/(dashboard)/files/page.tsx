@@ -143,18 +143,19 @@ export default function FilesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        render={<a
-                          href={file.s3Url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />}
+                      <a
+                        href={file.s3Url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                        >
                           <Download className="h-4 w-4 text-primary" />
-                      </Button>
+                        </Button>
+                      </a>
                       <Button
                         variant="ghost"
                         size="icon"

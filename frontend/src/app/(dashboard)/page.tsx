@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import apiClient from "@/lib/api/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 interface DashboardStats {
   memberCount: number;

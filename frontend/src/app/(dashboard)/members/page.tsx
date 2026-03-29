@@ -27,7 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Member, MemberRequest } from "@/types/member";
 import apiClient from "@/lib/api/client";
-import { MemberForm } from "../forms/member-form";
+import { MemberForm } from "@/components/forms/member-form";
 import { toast } from "sonner";
 
 export default function MembersPage() {
@@ -164,10 +164,12 @@ export default function MembersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" className="h-8 w-8 p-0" />
+                        }
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => {

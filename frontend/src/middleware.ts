@@ -3,14 +3,14 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
+  const isAuthPage = request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/register";
 
   // Note: We use cookies for middleware but localStorage for client components.
   // For a robust implementation, we should sync them or use cookies for both.
   // In this simple demo, we'll try to check the cookie.
-  
+
   if (!token && !isAuthPage) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (token && isAuthPage) {

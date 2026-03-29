@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import apiClient from "@/lib/api/client";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth/context";
 
 interface FileUploadProps {
   onSuccess: () => void;
 }
 
 export function FileUpload({ onSuccess }: FileUploadProps) {
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -27,15 +29,17 @@ export function FileUpload({ onSuccess }: FileUploadProps) {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("uploadedBy", "admin"); // Default for demo
+    formData.append("uploadedBy", user?.email || "admin"); 
 
+    let interval: ReturnType<typeof setInterval> | null = null;
+    
     try {
       setUploading(true);
       setProgress(10);
       
       // Axios doesn't natively support progress out of the box with the basic config 
       // but we can simulate it for the UI since the files are small in this demo
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setProgress((prev) => (prev >= 90 ? 90 : prev + 10));
       }, 500);
 
@@ -45,7 +49,6 @@ export function FileUpload({ onSuccess }: FileUploadProps) {
         },
       });
 
-      clearInterval(interval);
       setProgress(100);
       toast.success("File uploaded successfully");
       setFile(null);
@@ -54,6 +57,7 @@ export function FileUpload({ onSuccess }: FileUploadProps) {
       console.error("Upload failed:", error);
       toast.error("Failed to upload file");
     } finally {
+      if (interval) clearInterval(interval);
       setUploading(false);
       setProgress(0);
     }

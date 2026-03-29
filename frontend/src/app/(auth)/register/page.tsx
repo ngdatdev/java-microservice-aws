@@ -26,17 +26,17 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const registerSchema = z.z.object({
-  name: z.z.string().min(2, "Name must be at least 2 characters"),
-  email: z.z.string().email("Invalid email address"),
-  password: z.z.string().min(6, "Password must be at least 6 characters"),
+const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.z.infer<typeof registerSchema>>({
+  const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
@@ -45,7 +45,7 @@ export default function RegisterPage() {
     },
   });
 
-  async function onSubmit(values: z.z.infer<typeof registerSchema>) {
+  async function onSubmit(values: z.infer<typeof registerSchema>) {
     try {
       setIsLoading(true);
       await register(values.email, values.password, values.name);
@@ -69,7 +69,7 @@ export default function RegisterPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-             <FormField
+            <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
@@ -119,7 +119,7 @@ export default function RegisterPage() {
         <div className="text-sm text-muted-foreground text-center">
           Already have an account?{" "}
           <Link
-            href="/auth/login"
+            href="/login"
             className="text-primary hover:underline font-medium"
           >
             Sign in
