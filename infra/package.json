@@ -2,13 +2,17 @@
   "name": "infra",
   "version": "0.1.0",
   "bin": {
-    "infra": "bin/infra.js"
+    "infra": "bin/app.js"
   },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy:dev": "bash ./scripts/deploy-dev.sh",
+    "deploy:staging": "bash ./scripts/deploy-staging.sh",
+    "deploy:prod": "bash ./scripts/deploy-prod.sh",
+    "destroy:dev": "bash ./scripts/destroy-dev.sh"
   },
   "devDependencies": {
     "@types/jest": "^30",

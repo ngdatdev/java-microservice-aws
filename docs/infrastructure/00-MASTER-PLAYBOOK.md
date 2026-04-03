@@ -1,87 +1,128 @@
-# DevOps Master Playbook: AWS Cloud-Native Microservices
+# DevOps Master Playbook: Quy trình Từ Zero đến Production
 
-Chào mừng đến với tài liệu vận hành cốt lõi của hệ thống. Tài liệu này được thiết kế theo tư duy của một **Senior DevOps Engineer**, nhắm tới việc tổ chức, chuẩn hóa và tự động hóa toàn bộ vòng đời của hạ tầng (Infrastructure as Code - IaC) cũng như quá trình 배포 (Deployment).
-
----
-
-## 1. Triết lý Tổ chức (DevOps Philosophy)
-
-Hệ thống của chúng ta áp dụng các chuẩn mực Enterprise:
-1. **Infrastructure as Code (IaC):** Mọi tài nguyên AWS 100% phải được định nghĩa bằng mã (AWS CDK). Không ai được phép dùng chuột bấm tạo tài nguyên trên giao diện AWS Console. Điều này đảm bảo tính tái sử dụng và chống trôi dạt cấu hình (Config Drift).
-2. **Immutable Infrastructure:** Khi có bản cập nhật, chúng ta tạo ra Container Image mới và thay thế Container cũ, tuyệt đối không chui (SSH/Exec) vào Container đang chạy để sửa code.
-3. **Least Privilege:** Mọi luồng giao tiếp mạng phải khóa kín mặc định. Service A gọi Service B phải có rule Security Group mở riêng. 
-4. **Secret Management:** Mật khẩu Database, API Keys KHÔNG BAO GIỜ nằm trong mã nguồn hay biến môi trường tĩnh. Phải bốc từ AWS Secrets Manager tại thời điểm khởi động máy chủ (runtime).
+Tài liệu này không chỉ liệt kê lệnh cài đặt, mà là **Quy trình Tư duy Cốt lõi (DevOps Mindset)**. Đừng mù quáng quăng tất cả lên mây chờ đợi phép màu. Hãy thực hiện Test từng cục (Unit Test) -> Test nguyên xe (Docker Compose) -> Rồi mới mang ra đường đua (AWS Cloud).
 
 ---
 
-## 2. Quy hoạch Thư mục (Where things live)
+## GIAI ĐOẠN 0: Khai thiên Lập địa (Dành cho người chưa từng dùng AWS)
+*Nếu bạn hoàn toàn mù tịt về AWS, đây là những bước sống còn trước khi gõ bất kì lệnh code nào. Đừng bao giờ bỏ qua.*
 
-Để tránh hệ thống biến thành một mớ hỗn độn khi dự án phình to, chúng ta quy định chặt chẽ nơi lưu trữ:
-
-| Loại File | Vị trí thư mục | Quy tắc / Best Practice |
-|:---|:---|:---|
-| **Mã nguồn Hạ tầng (IaC)** | `infra/lib/` | Chia nhỏ thành từng Stack riêng biệt (VPC, RDS, ECS...) theo nguyên tắc "Single Responsibility". Nếu gom chung vào 1 file, sau này cập nhật rất dễ bị kẹt (update deadlock). |
-| **Scripts tự động hóa** | `scripts/` (Root) hoặc `infra/scripts/` | Chứa các file `*.sh` (Linux/Mac) hoặc `*.ps1` (Windows) dùng để chạy pipeline, clear cache, hay seed database. Ví dụ: `deploy_all.sh`. |
-| **Biến môi trường App** | `services/*/src/main/resources/application.yml` | Cấu hình cho App Spring Boot. Chia profile (vd: `application-dev.yml`, `application-prod.yml`). Các thông tin nhạy cảm phải gọi từ `${ENV_VAR}`. |
-| **Github Actions (CI/CD)** | `.github/workflows/` | Nơi lưu trữ các kịch bản chạy tự động. Tách riêng `ci-build.yml` (chỉ chạy test, build jar) và `cd-deploy.yml` (đẩy lên AWS). |
-
----
-
-## 3. Lộ trình Triển khai Chuẩn (The Master Deployment Lifecycle)
-
-Khi dựng một môi trường hoàn toàn mới (ví dụ môi trường `Staging` hay `Prod`), phải tuyệt đối tuân thủ theo luồng sau để tránh lỗi "Con gà - Quả trứng" (Circle Dependencies):
-
-### Phase 1: Mở đất & Đổ móng (Foundation & Security)
-1. **Chuẩn bị môi trường:** 
-   - AWS Account, IAM User có quyền AdministratorAccess.
-   - Chạy `cdk bootstrap` để chuẩn bị môi trường CDK.
-2. **Deploy Networking:** `cdk deploy VpcStack-<env>`
-   - *Mục đích:* Tạo ranh giới mạng cô lập, NAT Gateway để đi ra Internet an toàn.
-3. **Deploy ECR:** `cdk deploy EcrStack-<env>`
-   - *Mục đích:* Tạo trước các kho chứa Docker Image rỗng. Nếu không làm trước, Phase Compute sẽ sụp đổ.
-
-### Phase 2: Đóng gói Phần mềm (Build & Push Images)
-*Ở bước này, CI/CD Pipeline (GitHub Actions) thường đảm nhận, nhưng nếu chạy tay:*
-1. Build file JAR: `mvn clean package` cho cả 5 microservices.
-2. Build Docker Images: `docker build -t aws-micro-demo/<service-name> .`
-3. Push cờ lên AWS: Login ECR -> Tag Image -> Push lên ECR. Đảm bảo Image nằm sãn trên Cloud.
-
-### Phase 3: Gọi dữ liệu (Persistence Layer)
-1. **Deploy RDS:** `cdk deploy RdsStack-<env>`
-   - *Mục đích:* Khởi tạo PostgreSQL Database. Nó sẽ tự động sinh mật khẩu siêu việt và giấu vào Secrets Manager. Nhờ có VPC tạo ở Phase 1, con DB này yên vị trong Private Subnet.
-2. **Deploy Storage (S3 & SNS/SQS):** `cdk deploy S3Stack SnsSqsStack`
-   - *Mục đích:* Chuẩn bị ống cống tin nhắn (Messaging bus) và kho lưu trữ vật lý cho ứng dụng.
-
-### Phase 4: Khởi động Động cơ (Compute & Authentication)
-1. **Deploy Cognito:** `cdk deploy CognitoStack-<env>`
-   - *Mục đích:* Dựng máy chủ quản lý người dùng.
-2. **Deploy ECS:** `cdk deploy EcsStack-<env>`
-   - *Bước nguy hiểm nhất:* Bước này yêu cầu Image (Phase 2), DB (Phase 3), VPC (Phase 1) phải quy tụ đầy đủ. Fargate sẽ kéo code của bạn về, cắm vào DB, chọc vào SNS, và chạy lên cổng 8081-8085.
-
-### Phase 5: Mở cổng Đón khách (API Layer & Edge)
-1. **Deploy API Gateway:** `cdk deploy ApiGatewayStack-<env>`
-   - *Mục đích:* Mở cánh cổng HTTPS ra thế giới. Cổng này sẽ kiểm tra Token của Cognito (Phase 4), nếu hợp lệ, nó chui qua VPC Link đâm vào ECS Fargate.
-2. **Deploy CloudFront Front-end:** `cdk deploy CloudFrontStack-<env>`
-   - Build Source React/Next.js ra static file.
-   - Quăng lên Bucket `S3_FE`.
-   - Bật CDN phân phối đi cả thế giới.
+1. **Tạo tài khoản AWS Root (Chúa Tể):** 
+   - Vào `aws.amazon.com`, bấm **Create an AWS Account**. Làm theo hướng dẫn (Bạn sẽ cần Add thẻ Visa/Mastercard, AWS sẽ gạch tầm $1 để test và trả lại ngay).
+2. **Tạo IAM User (Tuyệt đối KHÔNG DÙNG tài khoản Root để code!):**
+   - Đăng nhập vào AWS Console bằng tài khoản Root vừa tạo.
+   - Gõ lên thanh tìm kiếm ô trên cùng, tìm dịch vụ **IAM (Identity and Access Management)**.
+   - Nhìn Menu bên trái, chọn **Users** -> Nhấn nút cam **Create user**. Đặt tên là `devops-admin` -> `Next`.
+   - Ở mục Permissions: Chọn **Attach policies directly**. Tìm dòng `AdministratorAccess` check ô vuông bên cạnh -> Nhấn `Next` -> `Create user`.
+3. **Lấy Chìa Khóa Quyền Lực (Access Keys):**
+   - Click ngược lại vào thằng User `devops-admin` vừa tạo. Chọn Tab **Security credentials**.
+   - Kéo xuống phần Access keys, nhấn **Create access key**.
+   - Chọn mục **Command Line Interface (CLI)** -> Bấm Create.
+   - 🚨 **CẢNH BÁO:** Màn hình sẽ hiện ra 2 chuỗi mã là `Access key ID` và `Secret access key`. Hãy copy hoặc tải nút `.csv` cất thật kĩ. (Làm lộ mã Secret này lên Github, tin tặc sẽ đào Bitcoin làm thẻ Visa của bạn bay màu $50,000 trong 1 đêm).
+4. **Trang Bị Nòng Pháo Cho Máy Tính (AWS CLI & Node.js):**
+   - Cài đặt phần mềm Node.js và Docker Desktop về máy.
+   - Cài đặt phần mềm **AWS CLI** (Lên Google search `AWS CLI install windows/mac` và tải file `.msi/.pkg` về cài next next).
+   - Mở Terminal lên gõ: `aws configure`
+   - Terminal hỏi `AWS Access Key ID`: Paste chuỗi bạn vừa copy ở Bước 3.
+   - Cắm tiếp `Secret Access Key`.
+   - Hỏi `Default region name`: Nhập `ap-northeast-1` (Vùng Tokyo Nhật Bản - tốc độ mạng đâm về Việt Nam rất nhanh).
+   - Format: Nhập `json` hoặc bấm Enter bỏ qua.
+5. **Cài Đặt Ma Thuật CDK:**
+   - Mở Terminal mới, gõ: `npm install -g aws-cdk`. Vậy là máy tính của bạn đã chính thức liên thông linh hồn với tài khoản AWS!
 
 ---
 
-## 4. CI/CD Automation (Đã được Setup sãn)
+## GIAI ĐOẠN 1: Local Sanity Check (Kiểm tra Sinh tồn từng Service)
+*Mục đích: Đảm bảo code của Lập trình viên không bị lỗi cú pháp, build thành công trước khi ghép nối.*
 
-Hệ thống của chúng ta đã được trang bị **GitHub Actions Continuous Deployment** nằm tại `.github/workflows/deploy-aws.yml`. Pipeline này sẽ tự động thay bạn làm mọi việc thủ công khi có người Push lên nhánh `main`.
+**Mục tiêu số 1: Vượt qua Unit Test & Build JAR**
+Chạy tuần tự trên máy cá nhân hoặc thông qua CI để xác nhận 5 mảnh ghép đều xanh:
+```bash
+# Gõ liên tục các lệnh sau. Nếu 1 cái báo BUILD FAILURE -> Dừng lại sửa dứt điểm.
+cd services/auth-service && mvn clean package 
+cd ../member-service && mvn clean package 
+cd ../file-service && mvn clean package 
+cd ../mail-service && mvn clean package 
+cd ../master-service && mvn clean package 
+```
 
-### 🚨 Cảnh báo sống còn: Thiết lập Khóa Tự động hóa (Automation Secrets)
-Để GitHub có đặc quyền chạy các lệnh thay thế cho máy của bạn trên môi trường mạng của AWS, bạn **BẮT BUỘC** phải cấp thẻ bài bí mật. Nếu quên bước này, Job Deploy sẽ nổ lỗi Đỏ lòe ngay từ bước Setup.
+**Mục tiêu số 2: Boot Run (Test khởi động chay)**
+- Hệ thống cần Database. Hãy bật tạm Local DB: `docker-compose up -d postgres localstack`
+- Mở thư mục `member-service`, chạy chay bằng IDE (Intellij/Eclipse) hoặc gõ `mvn spring-boot:run`. 
+- Thấy log in ra `Started MemberServiceApplication in 3.14 seconds` tức là máy móc không bị kẹt cổng. Tắt đi.
 
-Vào trình duyệt web mở kho code trên Github > Chọn **Settings** > **Secrets and variables** > **Actions** > **New repository secret**.
-Hãy thêm đủ 2 biến vô cùng quan trọng:
+---
 
-1. `AWS_ACCESS_KEY_ID`: ID thẻ chìa khóa sinh ra từ tài khoản IAM AWS với quyền Admin.
-2. `AWS_SECRET_ACCESS_KEY`: Mật mã đi kèm chìa khóa đó.
+## GIAI ĐOẠN 2: System Integration Test (Hợp luyện toàn hệ thống cục bộ)
+*Mục đích: Phải chắc chắn Auth nói chuyện được với Member. File gửi được tin nhắn cho Mail. Mọi thứ vận hành trơn tru ở dưới hạ giới trước khi đem lên Cloud.*
 
-### Phương thức Pipeline Hoạt động (Zero-Downtime Deployment)
-1. **Verify Code `Job 1`**: GitHub tải máy ảo Java 17, chạy Unit Tests và Build file JAR. Nó đóng vai trò Cảnh cửa an toàn (Gatekeeper). Nếu một đồng nghiệp Push code sai cú pháp Java, tiến trình lập tức báo Cancel, AWS của bạn vẫn sống an toàn.
-2. **Build ECR `Job 2`**: Bọc file JAR vào Docker, đặt tên thẻ (Tag) tuân thủ theo mã Git Commit Hash để Tracking siêu dễ dàng, sau đấy đẩy thẳng cái cục Docker hầm hố này lên mây (ECR).
-3. **CDK Deploy `Job 3`**: Load mã nguồn IaC với NodeJS 18, gõ lệnh `cdk deploy --all` đẩy mọi thứ lên thẳng Cloud. Trái tim rủng rỉnh ECS Cluster sẽ nhận ra có Image mới trong chớp mắt và thực hiện **Rolling Update**. Nghĩa là server cũ vẫn đứng tiếp khách, trong khi server mới lẳng lặng khởi động chờ sẵn, server mới nóng máy ok rồi thì server cũ tự khắc rút lui! Đạt chuẩn Enterprise thực thi chớp nhoáng không có Downtime!
+1. **Khởi động LocalStack và DB**
+   - Chúng ta dùng file `docker-compose.yml` có sẵn: `docker-compose up -d`
+   - Bọn này giả lập hệ thống AWS SNS, SQS, S3 và RDS y hệt thật. Tránh tốn tiền AWS.
+2. **Khởi tạo tài nguyên ảo (Run Scripts)**
+   - Chạy lệnh `./scripts/localstack-init.sh` (để mồi trước cái "hòm thư ảo" SQS và "loa ảo" SNS).
+   - Chạy DB script `./scripts/init-db.sql`.
+3. **Mở Postman Test các luồng**
+   - Gọi `POST localhost:8084/api/v1/auth/signup` -> Nếu trả về JWT, thành công!
+   - Kép tiếp Token đó ném sang `GET localhost:8081/api/v1/members/me` -> Nếu in ra Profile người dùng, chứng tỏ **Auth gọi Member Service thành công**.
+
+*(Khi đã chắc chắn 100% 5 con xe này đều nổ máy hoàn hảo. Chúng ta bắt đầu làm thủ tục Đưa Lên Mây AWS).*
+
+---
+
+## GIAI ĐOẠN 3: AWS Pre-flight & Đổ Móng (Foundation)
+*Mục đích: Cấp đất đai bên AWS, rào giậu, và xây kho rỗng.*
+
+1. **Cắm thẻ bài (Auth AWS):** `aws configure` -> Verify bằng lệnh `aws sts get-caller-identity`.
+2. **Mồi mạng lưới CDK:** `cdk bootstrap` (Chỉ làm 1 lần duy nhất trong lịch sử dự án).
+3. **Mở Đất, Khoanh Vùng & Xây Database:**
+   ```bash
+   cd infra
+   cdk deploy VpcStack-dev RdsStack-dev SnsSqsStack-dev
+   ```
+4. **Xây Kho chứa Mã Mạch (Chưa Đổ Data):**
+   ```bash
+   cdk deploy EcrStack-dev
+   ```
+   *Quá trình này xây cho bạn 5 cái hòm Rỗng. Cực kỳ quan trọng để chuẩn bị cho Giai đoạn 4.*
+
+---
+
+## GIAI ĐOẠN 4: Docker Release (Đóng gói & Chuyển phát nhanh)
+*Mục đích: Hóa phép 5 cục `.jar` cục bộ ở GĐ1 thành 5 khối Docker Image và bắn tọt chúng vào 5 cái hòm ECR trên AWS.*
+
+1. Lấy vé qua cửa: 
+   ```bash
+   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.ap-northeast-1.amazonaws.com
+   ```
+2. Build & Bắn hình ảnh (Push) cho cả 5 dịch vụ:
+   - File -> Docker -> Push tới `<ACCOUNT-ID>.dkr.ecr.../aws-micro-demo/file-service:latest`.
+*(Từ giờ phút này, trên mây của bạn đã có kho mã nguồn sống).*
+
+---
+
+## GIAI ĐOẠN 5: Bật Cầu Dao Mạng (Cloud Compute & Verification)
+*Mục đích: Gọi ECS Fargate xuống kho ECR, kéo code ra nổ máy. Mở cổng API Gateway ra thế giới.*
+
+1. **Deploy Cốt lõi Tính Toán:**
+   ```bash
+   cd infra
+   cdk deploy EcsStack-dev CognitoStack-dev ApiGatewayStack-dev
+   ```
+2. **⚠️ BƯỚC VERIFY SỐNG CÒN ⚠️:**
+   - Đừng tin máy móc. Việc có chữ `Deployment Successful` không có nghĩa là App chạy.
+   - Truy cập **AWS Console -> ECS -> Cluster (aws-micro-demo-dev)**.
+   - Nhìn vào thẻ **Tasks**. Nếu thấy 5 Tasks đang hiển thị chữ `RUNNING` màu xanh, xin chúc mừng! 
+   - Nếu bạn thấy `PENDING` rồi nó cứ tắt ngúm đẻ lại con khác (dấu hiệu CrashLoop) -> Bấm sang tab **Logs**. Thường là do sai Port, sai cấu hình DB (lỗi Secret), hoặc thiếu quyền mạng. App Java bị Crash. Bạn phải fix code và lặp lại GĐ 4.
+3. **Test API Thực tế Mây:** Nhét URL API Gateway chạy lệnh Signup qua Postman 1 lần nữa. Nếu chạy, Back-end chính thức Done!
+
+---
+
+## GIAI ĐOẠN 6: Hoàn thiện Lớp Áo & Camera Báo Động (Edge & Observability)
+1. **Dựng Camera Báo Động:** `cdk deploy CloudWatchStack-dev`
+   - Test thử: Chủ động gọi API báo lỗi 500 khoảng 12 lần liền. Xem có Email cảnh báo/Tin nhắn báo lỗi nổ về không.
+2. **Ship Giao Diện:** `cdk deploy S3Stack-dev CloudFrontStack-dev`
+3. Trỏ Frontend `NEXT_PUBLIC_API_URL` về URL CloudFront API. 
+   - Build ra static file và thả tay vào bucket S3 Của Frontend.
+
+🎉 **Toàn bộ hệ thống giờ đây đã tự động khép kín! Thiết lập xong luồng này, bạn đem quăng Giai đoạn 1 & 4 vào `.github/workflows/deploy-aws.yml` để biến nó thành dây chuyền Robot vĩnh cửu.**

@@ -13,12 +13,16 @@ import { CloudWatchStack } from '../lib/cloudwatch-stack';
 
 const app = new cdk.App();
 
-const envName = app.node.tryGetContext('envName') ?? 'dev';
+const envName = app.node.tryGetContext('env') ?? 'dev';
 const awsAccount = process.env.CDK_DEPLOY_ACCOUNT ?? process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000';
 const awsRegion = process.env.CDK_DEPLOY_REGION ?? process.env.CDK_DEFAULT_REGION ?? 'ap-northeast-1';
 
 const env: cdk.Environment = { account: awsAccount, region: awsRegion };
 const stackProps = { env, envName };
+
+cdk.Tags.of(app).add('Project', 'aws-micro-demo');
+cdk.Tags.of(app).add('Environment', envName);
+cdk.Tags.of(app).add('ManagedBy', 'CDK');
 
 // ─── Phase 1: Foundation ───────────────────────────────────────────────────────
 
