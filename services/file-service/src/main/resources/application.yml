@@ -39,7 +39,7 @@ aws:
     bucket-name: demo-uploads
   sns:
     endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    topic-arn: arn:aws:sns:ap-northeast-1:000000000000:global-notifications
+    topic-arn: ${AWS_SNS_FILE_EVENTS_ARN:arn:aws:sns:ap-northeast-1:000000000000:file-events}
 
 logging:
   level:

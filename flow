@@ -1,0 +1,118 @@
+graph LR
+    %% ==========================================
+    %% BLOCK 1: USERS & EDGE
+    %% ==========================================
+    subgraph ZONE1 ["Zone 1: Global Edge"]
+        direction LR
+        User((User))
+        CF["CloudFront (CDN)"]
+    end
+
+    %% ==========================================
+    %% BLOCK 2 (FRONT): AWS MANAGED ENTRY POINT
+    %% ==========================================
+    subgraph ZONE2_FRONT ["Zone 2: AWS Managed (Entry Point)"]
+        direction TB
+        S3_FE["S3: Frontend Bucket"]
+        APIGW["API Gateway v2"]
+        VPCLINK["VPC Link"]
+    end
+
+    %% ==========================================
+    %% BLOCK 3 & 4: INTERNAL VPC NETWORK
+    %% ==========================================
+    subgraph VPC ["Zone 3 & 4: VPC (aws-micro-demo)"]
+        
+        subgraph ZONE3 ["Zone 3: Public Subnets"]
+            direction TB
+            IGW["Internet Gateway"]
+            NAT["NAT Gateway"]
+            ALB["ALB (Public)"]
+        end
+
+        subgraph ZONE4 ["Zone 4: Private Subnets"]
+            NLB["Internal NLB"]
+            
+            subgraph ECS ["ECS Fargate Cluster"]
+                direction TB
+                SvcAuth["Auth:8084"]
+                SvcMember["Member:8081"]
+                SvcFile["File:8082"]
+                SvcMail["Mail:8083"]
+                SvcMaster["Master:8085"]
+            end
+            
+            RDS[("RDS (PostgreSQL)")]
+        end
+    end
+
+    %% ==========================================
+    %% BLOCK 2 (BACK): AWS MANAGED UTILITIES
+    %% ==========================================
+    subgraph ZONE2_BACK ["Zone 2: AWS Managed (Backends)"]
+        direction TB
+        Cognito["Cognito User Pool"]
+        SM["Secrets Manager"]
+        S3_FILE["S3: File Storage"]
+        SNS["SNS Topics"]
+        SQS["SQS Queues"]
+        SES["SES Email"]
+        ECR["ECR Container Registry"]
+        CW["CloudWatch"]
+    end
+
+    %% ==========================================
+    %% DATA FLOW
+    %% ==========================================
+    
+    %% Incoming flow
+    User -->|"HTTPS"| CF
+    CF -->|"Origin OAC"| S3_FE
+    CF -->|"/api/*"| APIGW
+    APIGW -->|"Bridge"| VPCLINK
+    VPCLINK -->|"TCP"| NLB
+
+    %% NLB load balancing into ECS
+    NLB --> SvcAuth & SvcMember & SvcFile & SvcMail & SvcMaster
+    
+    %% ALB fallback
+    ALB --> SvcAuth & SvcMember & SvcFile & SvcMail & SvcMaster
+
+    %% App calls Database
+    SvcAuth & SvcMember & SvcFile & SvcMaster -->|"Port 5432"| RDS
+    
+    %% App calls AWS backend services
+    APIGW -.->|"JWT validation"| Cognito
+    SvcAuth -.->|"Login"| Cognito
+    ECS -.->|"Get Passwords"| SM
+    ECS -.->|"Pull Image"| ECR
+    ECS -.->|"Write Logs"| CW
+    
+    SvcFile -->|"Store & Retrieve files"| S3_FILE
+    
+    %% Event flow (Messaging)
+    SvcMember & SvcFile -->|"Publish Events"| SNS
+    SNS -->|"Fan-out"| SQS
+    SvcMail -->|"Poll"| SQS
+    SvcMail -->|"Send Email"| SES
+
+    %% Internet Gateway for Private
+    NAT --> IGW
+    ECR -.->|"Through NAT"| NAT
+
+    %% ==========================================
+    %% STYLING HIGHLIGHTS
+    %% ==========================================
+    classDef edge fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#0f172a
+    classDef aws_front fill:#fefce8,stroke:#eab308,stroke-width:2px,color:#854d0e
+    classDef aws_back fill:#fefce8,stroke:#eab308,stroke-width:2px,color:#854d0e
+    classDef public fill:#dcfce7,stroke:#22c55e,stroke-width:2px,color:#14532d
+    classDef private fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d
+    classDef database fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+    
+    class ZONE1 edge
+    class ZONE2_FRONT aws_front
+    class ZONE2_BACK aws_back
+    class ZONE3 public
+    class ZONE4 private
+    class RDS database

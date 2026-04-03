@@ -1,0 +1,136 @@
+name: AWS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Cho phép kích hoạt pipeline bằng tay từ giao diện Github
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-1
+
+jobs:
+  # =========================================================
+  # JOB 1: KIỂM TRA MÃ NGUỒN & BUILD
+  # => Mục tiêu: Đảm bảo code không lỗi trước khi chạy tiếp
+  # =========================================================
+  verify_code:
+    name: Verify Code & Build Jars
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🔨 Build Microservices (Skip Tests for fast CD, enable if needed)
+        run: |
+          services=("member-service" "file-service" "mail-service" "auth-service" "master-service")
+          for svc in "${services[@]}"; do
+            echo "==== Building $svc ===="
+            cd services/$svc
+            mvn clean package -DskipTests
+            cd ../..
+          done
+
+  # =========================================================
+  # JOB 2: DOCKER BUILD & PUSH LÊN ECR
+  # => Yêu cầu: Phải vượt qua Job 1 mới chạy Job này
+  # =========================================================
+  build_and_push_to_ecr:
+    name: Docker Push to Amazon ECR
+    needs: verify_code
+    # Chỉ chạy deploy khi đẩy code lên nhánh main
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java 17 & Build (Quick Rebuild)
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - run: |
+          for svc in "member-service" "file-service" "mail-service" "auth-service" "master-service"; do
+            cd services/$svc && mvn clean package -DskipTests && cd ../..
+          done
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Best practice: Lưu các khóa này vào GitHub Secrets
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🐳 Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 🚀 Build, tag, and push images to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }} # Gắn tag là mã Github Commit
+        run: |
+          services=("member-service" "file-service" "mail-service" "auth-service" "master-service")
+          for svc in "${services[@]}"; do
+            echo "==== Pushing Docker image for $svc ===="
+            cd services/$svc
+            
+            # Tên kho chứa định nghĩa theo EcrStack (aws-micro-demo/xxx)
+            REPO_NAME="aws-micro-demo/$svc"
+            
+            docker build -t $ECR_REGISTRY/$REPO_NAME:latest -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG .
+            docker push $ECR_REGISTRY/$REPO_NAME:latest
+            docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+            cd ../..
+          done
+
+  # =========================================================
+  # JOB 3: DEPLOY HẠ TẦNG (INFRASTRUCTURE AS CODE)
+  # => Yêu cầu: Phải có Image trên ECR xong mới được update ECS
+  # =========================================================
+  deploy_infrastructure:
+    name: Deploy AWS Infrastructure (CDK)
+    needs: build_and_push_to_ecr
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🟢 Setup Node.js (for CDK)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './infra/package-lock.json'
+
+      - name: 📦 Install CDK dependencies
+        working-directory: ./infra
+        run: |
+          npm ci
+          npm install -g aws-cdk
+
+      - name: 🚀 Deploy Stacks via CDK
+        working-directory: ./infra
+        run: |
+          # Triển khai toàn bộ Stack tự động mà không cần gõ (Y) để xác nhận
+          cdk deploy --all --require-approval never

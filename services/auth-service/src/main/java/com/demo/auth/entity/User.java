@@ -27,6 +27,10 @@ public class User {
     private String fullName;
     private String cognitoSub;
 
+    // For local dev: stores BCrypt-hashed password locally.
+    // On real AWS, authentication is handled by Cognito.
+    private String passwordHash;
+
     @Enumerated(EnumType.STRING)
     private UserStatus status;
 

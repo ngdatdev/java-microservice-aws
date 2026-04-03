@@ -4,13 +4,11 @@ import com.demo.auth.entity.User;
 import com.demo.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -18,10 +16,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
-    private final CognitoIdentityProviderClient cognitoClient;
-
-    @Value("${aws.cognito.user-pool-id}")
-    private String userPoolId;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
@@ -30,46 +25,23 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedAdminUser() {
         String adminEmail = "admin@example.com";
-        
+
         if (userRepository.findByEmail(adminEmail).isEmpty()) {
             log.info("Seeding default admin user: {}", adminEmail);
-            
-            try {
-                // Try to get the user from Cognito to get their Sub
-                AdminGetUserRequest getRequest = AdminGetUserRequest.builder()
-                        .userPoolId(userPoolId)
-                        .username(adminEmail)
-                        .build();
-                
-                AdminGetUserResponse getResponse = cognitoClient.adminGetUser(getRequest);
-                String sub = getResponse.userAttributes().stream()
-                        .filter(attr -> attr.name().equals("sub"))
-                        .findFirst()
-                        .map(attr -> attr.value())
-                        .orElse(null);
 
-                if (sub != null) {
-                    User admin = User.builder()
-                            .username(adminEmail)
-                            .email(adminEmail)
-                            .fullName("System Administrator")
-                            .cognitoSub(sub)
-                            .status(User.UserStatus.ACTIVE)
-                            .build();
-                    
-                    userRepository.save(admin);
-                    log.info("Admin user seeded successfully with sub: {}", sub);
-                } else {
-                    log.warn("Could not find 'sub' attribute for admin user in Cognito");
-                }
-                
-            } catch (UserNotFoundException e) {
-                log.warn("Admin user not found in Cognito User Pool. Please ensure localstack-init.sh has run.");
-            } catch (Exception e) {
-                log.error("Error during admin user seeding: {}", e.getMessage());
-            }
+            User admin = User.builder()
+                    .username(adminEmail)
+                    .email(adminEmail)
+                    .fullName("System Administrator")
+                    .passwordHash(passwordEncoder.encode("Password123!"))
+                    .cognitoSub("local-dev-admin-" + UUID.randomUUID())
+                    .status(User.UserStatus.ACTIVE)
+                    .build();
+
+            userRepository.save(admin);
+            log.info("Default admin user seeded successfully.");
         } else {
-            log.info("Admin user already exists in database.");
+            log.info("Admin user already exists, skipping seed.");
         }
     }
 }

@@ -2,6 +2,7 @@ package com.demo.file.service;
 
 import com.demo.file.dto.FileResponse;
 import com.demo.file.entity.FileMetadata;
+import com.demo.file.messaging.SnsPublisher;
 import com.demo.file.repository.FileMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ public class FileServiceImpl implements FileService {
 
     private final FileMetadataRepository repository;
     private final S3Service s3Service;
+    private final SnsPublisher snsPublisher;
 
     @Override
     @Transactional
@@ -43,6 +45,8 @@ public class FileServiceImpl implements FileService {
             FileMetadata saved = repository.save(metadata);
             String presignedUrl = s3Service.generatePresignedUrl(key);
 
+            // Publish SNS event AFTER DB commit to avoid race condition
+            snsPublisher.publishFileEvent("FILE_UPLOADED", saved.getId(), originalFilename);
             log.info("File uploaded successfully: {}", originalFilename);
             return FileResponse.fromEntity(saved, presignedUrl);
         } catch (Exception e) {
@@ -70,7 +74,10 @@ public class FileServiceImpl implements FileService {
     public void deleteFile(UUID id) {
         FileMetadata metadata = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("File not found"));
+        String filename = metadata.getOriginalName();
         s3Service.deleteFile(metadata.getS3Key());
         repository.delete(metadata);
+        snsPublisher.publishFileEvent("FILE_DELETED", id, filename);
+        log.info("File deleted and event published: {}", filename);
     }
 }
