@@ -1,51 +1,46 @@
-server:
-  port: 8080
+# ============================================================
+# Base configuration — ALWAYS loaded before any profile.
+# Profile-specific values live in:
+#   application-local.yml   (local dev: LocalStack + debug logs)
+#   application-prod.yml    (production: real AWS + RDS)
+# ============================================================
 
 spring:
   application:
     name: auth-service
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/auth_db
-    username: ${DB_USER:admin}
-    password: ${DB_PASSWORD:password}
-    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  security:
-    user:
-      name: user
-      password: password
+
+server:
+  port: 8080
+
+aws:
+  region: ${AWS_REGION:ap-northeast-1}
+  cognito:
+    user-pool-id: ${COGNITO_USER_POOL_ID}
+    client-id: ${COGNITO_CLIENT_ID}
+    auth-flow: ADMIN_NO_SRP_AUTH
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 management:
   endpoints:
     web:
-      base-path: /
       exposure:
         include: health,info,metrics
   endpoint:
     health:
       show-details: always
-
-# AWS Simulation (LocalStack)
-aws:
-  region: ${AWS_REGION:ap-northeast-1}
-  cognito:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    user-pool-id: ${COGNITO_USER_POOL_ID:ap-northeast-1_demo_pool}
-    client-id: ${COGNITO_CLIENT_ID:demo_client_id}
-
-jwt:
-  secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktc2VjdXJlLWtleS0zMi1ieXRlcy1sb25nLWZvci10ZXN0aW5n}
-  expiration: ${JWT_EXPIRATION:86400000}
+  endpoints.web.base-path: /
 
 logging:
   level:
     root: INFO
-    com.demo.auth: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    com.demo.auth: INFO
+    org.springframework.web: WARN

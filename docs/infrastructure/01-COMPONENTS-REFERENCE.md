@@ -68,3 +68,15 @@ Tài liệu này bóc tách chi tiết từng cụm tài nguyên AWS trong hệ 
 - Nỡ may Mail-Server bị Crash, tin nhắn ấy không mất! Nó nằm yên trong cái Hòm Thư Chờ SQS (vàng khè). 3 ngày sau Mail-Server sống lại mới lôi ra gửi tiếp vẫn duyệt! 
 
 Thất bại 3 lần? Tin nhắn rơi xuống thùng rác **DLQ (Dead Letter Queue)**, AWS CloudWatch la toáng lên báo chuông cho DevOps vào tận nơi nhặt rác dọn dẹp bằng tay. Kín kẽ tuyệt đối.
+
+---
+
+## 6. 🚀 CI/CD Lifecycle: GitHub Actions (The Factory)
+*Dây chuyền lắp ráp và xuất xưởng tự động.*
+
+- **Verify (Thử nghiệm)**: Trước khi được phép "lên Mây", code phải vượt qua bài kiểm tra Build Java (Maven) + Build Frontend (npm). Lưu ý đặc biệt là bước `cdk synth` — nếu bạn viết sai code hạ tầng làm gãy sơ đồ logic, Pipeline sẽ tự ngắt, không cho phép phá hỏng hệ thống đang chạy.
+- **Ship (Đóng gói)**: Docker Image được build và tag theo **Git Commit SHA**. Điều này cực kỳ quan trọng cho việc Rollback. Nếu bản update mới bị lỗi, bạn chỉ cần chỉ định quay lại mã SHA cũ là xong, không đoán già đoán non.
+- **Deploy (Phát hành)**: Lệnh `cdk deploy` được thực thi với tham số `--context env=dev`. Nó sẽ so sánh sự khác biệt (Diff) giữa trên Mây và dưới Code, chỉ cập nhật những gì thay đổi để tiết kiệm thời gian.
+
+---
+🚀 **Kết luận**: Hệ thống của chúng ta không đơn thuần là vài dòng code Java, nó là một thực thể sống động được bao bọc bởi mạng lưới bảo mật và tự động hóa tầng tầng lớp lớp của AWS. Hãy tận hưởng sức mạnh này!

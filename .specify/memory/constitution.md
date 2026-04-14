@@ -1,8 +1,8 @@
 <!-- 
 Sync Impact Report:
-- Version change: 1.4.1 -> 1.5.0
+- Version change: 1.5.0 -> 1.6.0
 - List of modified principles: 
-    - Verification & Local Parity (NEW): Promoted local development workflow guidelines into a strict Principle VIII, mandating an exact 8-container local architecture, automated resource initialization (`init-localstack.sh`), and standard testing scripts per Phase 7 specifications.
+    - Automated CI/CD Lifecycle (NEW): Introduced Principle IX to formalize the CI/CD requirements using GitHub Actions, including workflow triggers, quality gates, and automated ECR containerization.
 - Added sections: None.
 - Templates requiring updates: ✅ Verified.
 - Follow-up TODOs: None.
@@ -48,8 +48,15 @@ Infrastructure MUST be provisioned systematically:
 Local environments MUST tightly mimic production:
 - **Container Synchronization**: A unified `docker-compose.yml` MUST define exactly 8 orchestrated containers (`postgres`, `localstack`, 5 spring boot services, and 1 frontend).
 - **Mocking Strategy**: `LocalStack` MUST be used to mock S3, SNS, SQS, and SES locally to bypass cloud costs.
-- **Scripted Verification**: Local operations MUST be verifiable via automated scripts (`scripts/init-localstack.sh` and `scripts/test-apis.sh`).
+- **Scripted Verification**: Local operations MUST be verifiable via automated scripts (`scripts/localstack-init.sh` and `scripts/test-apis.sh`).
 - **Demo Viability**: Every layer of the system MUST be documented iteratively via a `ARCHITECTURE.md` and user-friendly `DEMO-GUIDE.md`.
+
+### IX. Automated CI/CD Lifecycle
+The deployment pipeline MUST be fully automated via **GitHub Actions** to ensure consistent, repeatable, and safe infrastructure and application updates.
+- **Workflow Triggers**: Development flows SHOULD trigger deployments to the **dev** environment automatically on push to the `main` or development branch.
+- **Quality Gates**: Every pipeline execution MUST run validation jobs including Java/Next.js builds and CDK synthesis (`cdk synth`) before attempting any cloud modifications.
+- **Containerization**: CI/CD MUST automate the building and pushing of Docker images to **Amazon ECR**, using commit SHAs for versioning and traceability.
+- **Infrastructure Automation**: Infrastructure updates MUST be applied automatically via the GitHub Actions runner using the CDK CLI as the final orchestration step.
 
 ## AWS Infrastructure Constraints
 
@@ -68,4 +75,4 @@ The project is structured as a monorepo. A `.env.example` must be maintained at 
 ## Governance
 
 This constitution governs all architectural decisions. Any deviation must be documented.
-**Version**: 1.5.0 | **Ratified**: 2026-03-25 | **Last Amended**: 2026-04-03
+**Version**: 1.6.0 | **Ratified**: 2026-03-25 | **Last Amended**: 2026-04-03

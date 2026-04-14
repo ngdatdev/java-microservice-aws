@@ -34,3 +34,27 @@ This is a demonstration project showcasing a microservice architecture deployed 
 - **Master Service**: http://localhost:8085
 - **Frontend**: http://localhost:3000
 - **LocalStack**: http://localhost:4566
+
+---
+
+## ☁️ Cloud Deployment (AWS)
+
+The project is fully automated via **GitHub Actions**.
+
+### 1. Pre-requisites
+- AWS Account with Admin permissions.
+- GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
+
+### 2. Manual Configuration
+Refer to **[AWS-SETUP-CHECKLIST.md](./docs/AWS-SETUP-CHECKLIST.md)** for mandatory SES and Cognito manual verification steps.
+
+### 3. CI/CD Lifecycle
+- **Pull Request**: Triggers code validation (Java/Frontend) and `cdk synth`.
+- **Merge to Main**: Triggers automatic Docker push to ECR and `cdk deploy`.
+
+---
+
+## 📚 Documentation
+- **[DevOps Master Playbook](./docs/infrastructure/00-MASTER-PLAYBOOK.md)**: The end-to-end guide from zero to production.
+- **[System Architecture](./docs/ARCHITECTURE.md)**: Visual map and component boundaries.
+- **[Demo Guide](./docs/DEMO-GUIDE.md)**: Step-by-step verification of the ecosystem features.

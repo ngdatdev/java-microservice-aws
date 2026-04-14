@@ -48,3 +48,19 @@ The AWS Microservice Demo represents a highly decoupled, serverless-oriented web
 ## 3. The LocalStack Magic
 
 In order to run this locally without paying for AWS Sandbox resources, we employ **LocalStack**. The Spring Boot applications load an alternative `application.yml` profile which hijacks standard AWS Java SDK endpoint injection domains, funneling `sns.us-east-1.amazonaws.com` aggressively to `http://localstack:4566`.
+
+---
+
+## 4. CI/CD Pipeline (The DevOps Loop)
+
+The system utilizes **GitHub Actions** as the primary orchestrator for Continuous Delivery.
+
+1.  **Stage 1 (Verify)**: Every PR triggers a full Java Maven build, Next.js build, and `cdk synth` for the target environment (`--context env=dev`).
+2.  **Stage 2 (Ship)**: Merges to `main` trigger Docker builds for the 5 services. Images are pushed to **Amazon ECR** tagged with the Git SHA.
+3.  **Stage 3 (Deploy)**: The pipeline executes `cdk deploy --all` to update ECS task definitions and infrastructure stacks.
+
+## 5. Security & Identity
+
+- **Auth**: Primary identity provider is **Amazon Cognito**.
+- **Least Privilege**: Each ECS task runs with a dedicated IAM Task Role restricting access to only the specific S3 buckets or SQS queues required for its business logic.
+- **Secrets**: Database credentials are in **AWS Secrets Manager**, rotated and injected at runtime by ECS.

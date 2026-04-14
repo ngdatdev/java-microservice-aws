@@ -62,9 +62,10 @@ cd ../master-service && mvn clean package
 2. **Khởi tạo tài nguyên ảo (Run Scripts)**
    - Chạy lệnh `./scripts/localstack-init.sh` (để mồi trước cái "hòm thư ảo" SQS và "loa ảo" SNS).
    - Chạy DB script `./scripts/init-db.sql`.
-3. **Mở Postman Test các luồng**
-   - Gọi `POST localhost:8084/api/v1/auth/signup` -> Nếu trả về JWT, thành công!
-   - Kép tiếp Token đó ném sang `GET localhost:8081/api/v1/members/me` -> Nếu in ra Profile người dùng, chứng tỏ **Auth gọi Member Service thành công**.
+3. **Chạy Script Kiểm định (The Sanity Check)**
+   - Chạy lệnh `./scripts/test-apis.sh`. 
+   - Script này sẽ tự động bắn cURL vào toàn bộ các Gateway. Bạn sẽ thấy Log phản hồi từ Member -> File -> Mail.
+   - **Kết quả mong đợi**: Nếu thấy Member Service trả về JSON Profile và Mail Service Queue không báo lỗi, chứng tỏ **Luồng Event-Driven SNS/SQS đã thông suốt**.
 
 *(Khi đã chắc chắn 100% 5 con xe này đều nổ máy hoàn hảo. Chúng ta bắt đầu làm thủ tục Đưa Lên Mây AWS).*
 
@@ -125,4 +126,22 @@ cd ../master-service && mvn clean package
 3. Trỏ Frontend `NEXT_PUBLIC_API_URL` về URL CloudFront API. 
    - Build ra static file và thả tay vào bucket S3 Của Frontend.
 
-🎉 **Toàn bộ hệ thống giờ đây đã tự động khép kín! Thiết lập xong luồng này, bạn đem quăng Giai đoạn 1 & 4 vào `.github/workflows/deploy-aws.yml` để biến nó thành dây chuyền Robot vĩnh cửu.**
+🎉 **Toàn bộ hệ thống giờ đây đã tự động khép kín!**
+
+---
+
+## GIAI ĐOẠN 7: CI/CD & Automated Lifecycle (Robot Vĩnh Cửu)
+*Mục đích: Không còn phải gõ `cdk deploy` bằng tay. Code đẩy lên là Mây tự cập nhật.*
+
+1. **Thiết lập GitHub Secrets**:
+   - Truy cập GitHub Repo -> Settings -> Secrets -> Actions.
+   - Thêm `AWS_ACCESS_KEY_ID` và `AWS_SECRET_ACCESS_KEY`.
+2. **Kích hoạt Pipeline**:
+   - File `.github/workflows/deploy-aws.yml` đã được tối ưu.
+   - Mọi Pull Request sẽ chạy **Verify Job** (Build Java + Build Frontend + CDK Synth).
+   - Mọi lệnh Push/Merge vào `main` sẽ tự động Push Docker Image sang ECR và `cdk deploy` toàn diện.
+3. **Bàn giao & Vận hành**:
+   - Luôn tham chiếu [AWS-SETUP-CHECKLIST.md](../AWS-SETUP-CHECKLIST.md) để biết cách xác thực SES và xử lý lỗi Cloud.
+
+---
+💡 **Lời kết**: DevOps là một hành trình, không phải một điểm đến. Chúc bạn làm chủ được hạ tầng Cloud của mình! 🚀

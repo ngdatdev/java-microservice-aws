@@ -32,5 +32,29 @@ docker exec demo-localstack awslocal s3 ls s3://demo-uploads
 ```
 > *You will notice `test-sample.txt` floating inside the queried bucket list.*
 
-## Final Remarks
-Congratulations! You've just fully tested a 100% simulated, extremely modular AWS Microservice infrastructure logic mapping without needing IAM keys!
+## Congratulations! You've just fully tested a 100% simulated, extremely modular AWS Microservice infrastructure logic mapping without needing IAM keys!
+
+---
+
+## ☁️ Cloud Verification (The "Mây" Demo)
+
+If you have already deployed this system to AWS via GitHub Actions (Phase 8), follow these steps to verify it live:
+
+### 1. The Global Entry Point
+Find your **CloudFront URL** in the CDK outputs or the AWS Console. 
+- Access the URL. It should load the Next.js frontend securely via HTTPS.
+
+### 2. Live API Testing
+Use the Frontend to **Sign Up**.
+- Verify that a `POST` request is sent to the API Gateway.
+- Check the **Cognito Console** to see if your user was created.
+
+### 3. Asynchronous Success (Live SNS/SQS)
+Upload a file via the "Files" dashboard.
+- Check the **S3 Bucket** (defined in `S3Stack`) for the new file.
+- Check the **SQS Queue Monitoring** in the AWS Console. You should see a "Message Received" and "Message Deleted" spike.
+- If **SES** is verified, check your inbox for a success notification!
+
+### 4. Operational Checklist
+For a deep-dive into every service's health, ALWAYS consult:
+- **[AWS-SETUP-CHECKLIST.md](./AWS-SETUP-CHECKLIST.md)**
