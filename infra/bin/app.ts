@@ -15,7 +15,7 @@ const app = new cdk.App();
 
 const envName = app.node.tryGetContext('env') ?? 'dev';
 const awsAccount = process.env.CDK_DEPLOY_ACCOUNT ?? process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000';
-const awsRegion = process.env.CDK_DEPLOY_REGION ?? process.env.CDK_DEFAULT_REGION ?? 'ap-northeast-1';
+const awsRegion = process.env.CDK_DEPLOY_REGION ?? process.env.CDK_DEFAULT_REGION ?? 'ap-southeast-1';
 
 const env: cdk.Environment = { account: awsAccount, region: awsRegion };
 const stackProps = { env, envName };
@@ -26,18 +26,14 @@ cdk.Tags.of(app).add('ManagedBy', 'CDK');
 
 // ─── Phase 1: Foundation ───────────────────────────────────────────────────────
 
-// T004/T007-T009: VPC, subnets, and security groups
 const vpcStack = new VpcStack(app, `VpcStack-${envName}`, { ...stackProps });
 
-// T005: SNS Topics + SQS Queues (independent of VPC)
 const snsSqsStack = new SnsSqsStack(app, `SnsSqsStack-${envName}`, { ...stackProps });
 
-// T006: ECR repositories for all 5 services (independent)
 const ecrStack = new EcrStack(app, `EcrStack-${envName}`, { ...stackProps });
 
 // ─── Phase 2: Persistence ──────────────────────────────────────────────────────
 
-// T010-T012: RDS PostgreSQL — depends on VPC
 const rdsStack = new RdsStack(app, `RdsStack-${envName}`, {
   ...stackProps,
   vpc: vpcStack.vpc,
@@ -46,9 +42,14 @@ const rdsStack = new RdsStack(app, `RdsStack-${envName}`, {
 });
 rdsStack.addDependency(vpcStack);
 
-// ─── Phase 3: Compute ──────────────────────────────────────────────────────────
+// ─── Phase 3: Auth & S3 — tạo TRƯỚC ECS (vì ECS cần ARN của chúng) ───────────
 
-// T013-T016: ECS Cluster, Services, ALB, NLB — depends on VPC, ECR, RDS
+const cognitoStack = new CognitoStack(app, `CognitoStack-${envName}`, { ...stackProps });
+
+const s3Stack = new S3Stack(app, `S3Stack-${envName}`, { ...stackProps });
+
+// ─── Phase 4: ECS Cluster — cần ARN từ Cognito + S3 ─────────────────────────
+
 const ecsStack = new EcsStack(app, `EcsStack-${envName}`, {
   ...stackProps,
   vpc: vpcStack.vpc,
@@ -57,17 +58,24 @@ const ecsStack = new EcsStack(app, `EcsStack-${envName}`, {
   nlbSg: vpcStack.nlbSg,
   repositories: ecrStack.repositories,
   dbSecret: rdsStack.dbSecret,
+  // ARN inputs for explicit IAM — lấy từ Cognito + S3 stacks
+  userPoolArn: cognitoStack.userPool.userPoolArn,
+  memberEventsTopicArn: snsSqsStack.memberEventsTopic.topicArn,
+  fileEventsTopicArn: snsSqsStack.fileEventsTopic.topicArn,
+  notificationsTopicArn: snsSqsStack.notificationsTopic.topicArn,
+  mailQueueArn: snsSqsStack.mailServiceQueue.queueArn,
+  auditQueueArn: snsSqsStack.memberEventQueue.queueArn,
+  storageBucketArn: s3Stack.storageBucket.bucketArn,
 });
 ecsStack.addDependency(vpcStack);
 ecsStack.addDependency(ecrStack);
 ecsStack.addDependency(rdsStack);
+ecsStack.addDependency(snsSqsStack);
+ecsStack.addDependency(cognitoStack);
+ecsStack.addDependency(s3Stack);
 
-// ─── Phase 4: Auth & API ───────────────────────────────────────────────────────
+// ─── Phase 5: API Gateway ─────────────────────────────────────────────────────
 
-// T017: Cognito User Pool & Client (independent)
-const cognitoStack = new CognitoStack(app, `CognitoStack-${envName}`, { ...stackProps });
-
-// T018-T019: HTTP API Gateway + VPC Link + JWT Authorizer
 const apiGatewayStack = new ApiGatewayNlbStack(app, `ApiGatewayStack-${envName}`, {
   ...stackProps,
   vpc: vpcStack.vpc,
@@ -79,12 +87,8 @@ apiGatewayStack.addDependency(vpcStack);
 apiGatewayStack.addDependency(ecsStack);
 apiGatewayStack.addDependency(cognitoStack);
 
-// ─── Phase 5: Storage & Edge ───────────────────────────────────────────────────
+// ─── Phase 6: CloudFront ───────────────────────────────────────────────────────
 
-// T020: S3 buckets (independent)
-const s3Stack = new S3Stack(app, `S3Stack-${envName}`, { ...stackProps });
-
-// T021-T022: CloudFront distribution with OAC + cache policies (frontend bucket lives here)
 const apiGatewayDomain = `${apiGatewayStack.httpApi.apiId}.execute-api.${awsRegion}.amazonaws.com`;
 const cloudFrontStack = new CloudFrontStack(app, `CloudFrontStack-${envName}`, {
   ...stackProps,
@@ -92,9 +96,8 @@ const cloudFrontStack = new CloudFrontStack(app, `CloudFrontStack-${envName}`, {
 });
 cloudFrontStack.addDependency(apiGatewayStack);
 
-// ─── Phase 6: Observability ────────────────────────────────────────────────────
+// ─── Phase 7: Observability ───────────────────────────────────────────────────
 
-// T023-T025: CloudWatch Dashboard + Alarms + SNS Alarm Topic
 const serviceNames = [
   'member-service',
   'file-service',

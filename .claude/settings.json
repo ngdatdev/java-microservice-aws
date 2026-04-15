@@ -5,7 +5,9 @@
       "Bash(dir \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\")",
       "Bash(dir /s /b \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\java\")",
       "Bash(dir /s /b \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\resources\")",
-      "Bash(dir /s /b \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\resources\\\\static\" \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\resources\\\\templates\")"
+      "Bash(dir /s /b \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\resources\\\\static\" \"D:\\\\a_project\\\\aws\\\\services\\\\auth-service\\\\src\\\\main\\\\resources\\\\templates\")",
+      "Bash(dir \"D:\\\\a_project\\\\aws\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

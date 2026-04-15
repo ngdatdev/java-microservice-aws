@@ -18,24 +18,5 @@ services:
       timeout: 5s
       retries: 5
 
-  localstack:
-    image: localstack/localstack:3.0
-    container_name: auth-localstack
-    environment:
-      SERVICES: cognito
-      DEFAULT_REGION: ap-northeast-1
-      EAGER_SERVICE_LOADING: "1"
-    ports:
-      - "4566:4566"
-    volumes:
-      - localstack_data:/var/lib/localstack
-      - ./scripts/bootstrap-localstack.sh:/etc/localstack/init/ready.d/bootstrap.sh
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-
 volumes:
   postgres_data:
-  localstack_data:

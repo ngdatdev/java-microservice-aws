@@ -1,6 +1,7 @@
 # ============================================
-# PRODUCTION — for deployed environments
-# Uses real AWS Cognito + AWS RDS
+# PRODUCTION — uses real AWS Cognito + RDS
+# All secrets MUST come from env vars or
+# AWS Secrets Manager / Parameter Store.
 # ============================================
 spring:
   config:
@@ -26,11 +27,16 @@ spring:
 
 aws:
   cognito:
-    # endpoint: unset → use real AWS (no override)
-    # Credentials come from IAM role / environment
+    # No endpoint override → uses real AWS
+    # Credentials from IAM role / environment
+    user-pool-id: ${COGNITO_USER_POOL_ID}
+    client-id: ${COGNITO_CLIENT_ID}
+
+jwt:
+  secret: ${JWT_SECRET}
 
 logging:
   level:
-    com.demo.auth: INFO
-    org.hibernate.SQL: OFF
-    org.springframework.web: WARN
+    "[com.demo.auth]": INFO
+    "[org.hibernate.SQL]": OFF
+    "[org.springframework.web]": WARN

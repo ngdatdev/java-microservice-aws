@@ -7,11 +7,22 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import {
+  createAuthServiceIAM,
+  createAuthServiceExecutionRole,
+  createMemberServiceIAM,
+  createMemberServiceExecutionRole,
+  createFileServiceIAM,
+  createFileServiceExecutionRole,
+  createMailServiceIAM,
+  createMailServiceExecutionRole,
+  createMasterServiceIAM,
+  createMasterServiceExecutionRole,
+} from './iam';
 
 export interface ServiceDefinition {
   name: string;
   port: number;
-  repositoryUri: string;
 }
 
 export interface EcsStackProps extends cdk.StackProps {
@@ -22,14 +33,22 @@ export interface EcsStackProps extends cdk.StackProps {
   nlbSg: ec2.ISecurityGroup;
   repositories: Record<string, ecr.IRepository>;
   dbSecret: secretsmanager.ISecret;
+  // ARN inputs for IAM
+  userPoolArn: string;
+  memberEventsTopicArn: string;
+  fileEventsTopicArn: string;
+  notificationsTopicArn: string;
+  mailQueueArn: string;
+  auditQueueArn: string;
+  storageBucketArn: string;
 }
 
 const SERVICE_DEFINITIONS: ServiceDefinition[] = [
-  { name: 'member-service', port: 8081, repositoryUri: '' },
-  { name: 'file-service', port: 8082, repositoryUri: '' },
-  { name: 'mail-service', port: 8083, repositoryUri: '' },
-  { name: 'auth-service', port: 8084, repositoryUri: '' },
-  { name: 'master-service', port: 8085, repositoryUri: '' },
+  { name: 'member-service', port: 8081 },
+  { name: 'file-service', port: 8082 },
+  { name: 'mail-service', port: 8083 },
+  { name: 'auth-service', port: 8084 },
+  { name: 'master-service', port: 8085 },
 ];
 
 export class EcsStack extends cdk.Stack {
@@ -41,7 +60,10 @@ export class EcsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: EcsStackProps) {
     super(scope, id, props);
 
-    const { envName, vpc, albSg, ecsSg, nlbSg, repositories, dbSecret } = props;
+    const { envName, vpc, albSg, ecsSg, nlbSg, repositories, dbSecret,
+            userPoolArn, memberEventsTopicArn, fileEventsTopicArn,
+            notificationsTopicArn, mailQueueArn, auditQueueArn,
+            storageBucketArn } = props;
 
     // T013: ECS Cluster with Container Insights + Cloud Map namespace
     this.cluster = new ecs.Cluster(this, 'DemoCluster', {
@@ -79,6 +101,89 @@ export class EcsStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
     });
 
+    // ============================================================
+    // CREATE EXPLICIT IAM ROLES FOR EACH SERVICE
+    // ============================================================
+
+    // Auth Service IAM
+    const authTaskRole = createAuthServiceIAM(this, {
+      envName,
+      userPoolArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+    const authExecutionRole = createAuthServiceExecutionRole(this, {
+      envName,
+      userPoolArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+
+    // Member Service IAM
+    const memberTaskRole = createMemberServiceIAM(this, {
+      envName,
+      memberEventsTopicArn,
+      auditQueueArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+    const memberExecutionRole = createMemberServiceExecutionRole(this, {
+      envName,
+      memberEventsTopicArn,
+      auditQueueArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+
+    // File Service IAM
+    const fileTaskRole = createFileServiceIAM(this, {
+      envName,
+      storageBucketArn,
+      fileEventsTopicArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+    const fileExecutionRole = createFileServiceExecutionRole(this, {
+      envName,
+      storageBucketArn,
+      fileEventsTopicArn,
+      dbSecretArn: dbSecret.secretArn,
+    });
+
+    // Mail Service IAM
+    const mailTaskRole = createMailServiceIAM(this, {
+      envName,
+      mailQueueArn,
+      notificationsTopicArn,
+    });
+    const mailExecutionRole = createMailServiceExecutionRole(this, {
+      envName,
+      mailQueueArn,
+      notificationsTopicArn,
+    });
+
+    // Master Service IAM
+    const masterTaskRole = createMasterServiceIAM(this, {
+      envName,
+      dbSecretArn: dbSecret.secretArn,
+    });
+    const masterExecutionRole = createMasterServiceExecutionRole(this, {
+      envName,
+      dbSecretArn: dbSecret.secretArn,
+    });
+
+    // Map service name -> IAM roles
+    const taskRoles: Record<string, any> = {
+      'auth-service': authTaskRole,
+      'member-service': memberTaskRole,
+      'file-service': fileTaskRole,
+      'mail-service': mailTaskRole,
+      'master-service': masterTaskRole,
+    };
+
+    const executionRoles: Record<string, any> = {
+      'auth-service': authExecutionRole,
+      'member-service': memberExecutionRole,
+      'file-service': fileExecutionRole,
+      'mail-service': mailExecutionRole,
+      'master-service': masterExecutionRole,
+    };
+
     this.services = {};
 
     // T014: Fargate Task Definitions + Services per microservice
@@ -96,14 +201,14 @@ export class EcsStack extends cdk.Stack {
       });
 
       // T014: Task Definition — CPU 256, MEM 512
+      // Sử dụng EXPLICIT IAM roles (best practice)
       const taskDef = new ecs.FargateTaskDefinition(this, `${svcId}TaskDef`, {
         family: `aws-micro-demo-${svcDef.name}-${envName}`,
+        taskRole: taskRoles[svcDef.name],
+        executionRole: executionRoles[svcDef.name],
         cpu: 256,
         memoryLimitMiB: 512,
       });
-
-      // Grant access to RDS secret
-      dbSecret.grantRead(taskDef.taskRole);
 
       const container = taskDef.addContainer(`${svcId}Container`, {
         image: ecs.ContainerImage.fromEcrRepository(repo, 'latest'),

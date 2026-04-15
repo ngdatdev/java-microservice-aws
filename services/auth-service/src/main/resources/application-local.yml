@@ -1,6 +1,7 @@
 # ============================================
 # LOCAL — for local development
 # Uses LocalStack + PostgreSQL
+# All secrets come from .env file (gitignored)
 # ============================================
 spring:
   config:
@@ -16,17 +17,16 @@ spring:
   jpa:
     show-sql: true
 
-  security:
-    user:
-      name: user
-      password: password
-
 aws:
   cognito:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
+    user-pool-id: ${COGNITO_USER_POOL_ID:}
+    client-id: ${COGNITO_CLIENT_ID:}
+
+jwt:
+  secret: ${JWT_SECRET:}
 
 logging:
   level:
-    com.demo.auth: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.springframework.web: INFO
+    "[com.demo.auth]": DEBUG
+    "[org.hibernate.SQL]": DEBUG
+    "[org.springframework.web]": INFO

@@ -1,13 +1,17 @@
 # ============================================================
-# Base configuration — ALWAYS loaded before any profile.
-# Profile-specific values live in:
-#   application-local.yml   (local dev: LocalStack + debug logs)
-#   application-prod.yml    (production: real AWS + RDS)
+# Base — ALWAYS loaded before any profile.
+# Secrets (password, JWT secret) MUST come from env vars or
+# external secrets manager. Never hardcode here.
 # ============================================================
 
 spring:
   application:
     name: auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/auth_db
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,15 +23,12 @@ server:
   port: 8080
 
 aws:
-  region: ${AWS_REGION:ap-northeast-1}
+  region: ap-northeast-1
   cognito:
-    user-pool-id: ${COGNITO_USER_POOL_ID}
-    client-id: ${COGNITO_CLIENT_ID}
     auth-flow: ADMIN_NO_SRP_AUTH
 
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000}
+  expiration: 86400000
 
 management:
   endpoints:
@@ -42,5 +43,5 @@ management:
 logging:
   level:
     root: INFO
-    com.demo.auth: INFO
-    org.springframework.web: WARN
+    "[com.demo.auth]": INFO
+    "[org.springframework.web]": WARN

@@ -8,8 +8,8 @@ export interface CognitoStackProps extends cdk.StackProps {
 
 export class CognitoStack extends cdk.Stack {
   public readonly userPool: cognito.IUserPool;
+  public readonly userPoolArn: string;
   public readonly userPoolClient: cognito.IUserPoolClient;
-  public readonly userPoolIssuerUrl: string;
 
   constructor(scope: Construct, id: string, props: CognitoStackProps) {
     super(scope, id, props);
@@ -53,7 +53,7 @@ export class CognitoStack extends cdk.Stack {
       refreshTokenValidity: cdk.Duration.days(30),
     });
 
-    this.userPoolIssuerUrl = `https://cognito-idp.${this.region}.amazonaws.com/${(this.userPool as cognito.UserPool).userPoolId}`;
+    this.userPoolArn = this.userPool.userPoolArn;
 
     // Outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
@@ -68,10 +68,10 @@ export class CognitoStack extends cdk.Stack {
       exportName: `${envName}-UserPoolClientId`,
     });
 
-    new cdk.CfnOutput(this, 'UserPoolIssuerUrl', {
-      value: this.userPoolIssuerUrl,
-      description: 'Cognito JWT Issuer URL',
-      exportName: `${envName}-UserPoolIssuerUrl`,
+    new cdk.CfnOutput(this, 'UserPoolArn', {
+      value: this.userPoolArn,
+      description: 'Cognito User Pool ARN',
+      exportName: `${envName}-UserPoolArn`,
     });
   }
 }
