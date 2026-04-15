@@ -15,7 +15,7 @@ Mục tiêu nghiên cứu các rào cản kỹ thuật khi triển khai CDK lên
 - **Vấn đề**: Sự khác biệt giữa `cdk` và `cdklocal`.
 - **Kết quả**:
     - `cdklocal` là wrapper tự động cấu hình các endpoint AWS CLI về `http://localhost:4566`.
-    - Cần chạy `cdklocal bootstrap aws://000000000000/ap-northeast-1` trước khi deploy lần đầu.
+    - Cần chạy `cdklocal bootstrap aws://000000000000/ap-southeast-1` trước khi deploy lần đầu.
 - **Quyết định**: Sử dụng `cdklocal` cho mọi thao tác deploy cục bộ.
 
 ## 3. VPC và Networking trong LocalStack

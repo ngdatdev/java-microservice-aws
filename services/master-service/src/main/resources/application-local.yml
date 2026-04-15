@@ -1,7 +1,7 @@
 # ============================================================
 # LOCAL — for local development
 # PostgreSQL must be running locally (docker or installed)
-# AWS credentials via: aws configure OR .env file
+# No AWS SDK — purely REST calls to other services
 # ============================================================
 spring:
   config:
@@ -13,6 +13,6 @@ spring:
 
 logging:
   level:
-    "[com.demo.auth]": DEBUG
+    "[com.demo.master]": DEBUG
     "[org.hibernate.SQL]": DEBUG
     "[org.springframework.web]": INFO

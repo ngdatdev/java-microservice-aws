@@ -1,0 +1,31 @@
+{
+  "name": "aws-microservice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Run scripts for all microservices locally",
+  "scripts": {
+    "--- SPRING BOOT SERVICES ---": "",
+    "dev:auth":     "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/auth-service     && .\\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev:member":   "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/member-service   && .\\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev:file":     "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/file-service     && .\\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev:mail":     "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/mail-service     && .\\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+    "dev:master":   "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/master-service   && .\\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+
+    "build:auth":   "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/auth-service     && .\\mvnw.cmd clean package -DskipTests",
+    "build:member": "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/member-service   && .\\mvnw.cmd clean package -DskipTests",
+    "build:file":   "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/file-service     && .\\mvnw.cmd clean package -DskipTests",
+    "build:mail":   "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/mail-service     && .\\mvnw.cmd clean package -DskipTests",
+    "build:master": "set \"JAVA_HOME=C:\\Program Files\\Java\\jdk-21\" && set \"PATH=%JAVA_HOME%\\bin;%PATH%\" && cd services/master-service   && .\\mvnw.cmd clean package -DskipTests",
+    "build:all":    "npm run build:auth && npm run build:member && npm run build:file && npm run build:mail && npm run build:master",
+
+    "--- FRONTEND (Next.js) ---": "",
+    "dev:frontend":   "cd frontend && npm run dev",
+    "build:frontend":  "cd frontend && npm run build",
+
+    "--- INFRA ---": "",
+    "dev:postgres": "docker run --rm -p 5432:5432 -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=password postgres:15-alpine"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

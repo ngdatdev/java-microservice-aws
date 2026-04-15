@@ -24,7 +24,7 @@ services:
       - "4566:4566"
     environment:
 
-      - DEFAULT_REGION=ap-northeast-1
+      - DEFAULT_REGION=ap-southeast-1
       - DEBUG=1
     volumes:
       - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init-resources.sh

@@ -80,7 +80,7 @@ Create docs/AWS-SETUP-CHECKLIST.md with:
 5. API Gateway 502 → NLB target group unhealthy
 6. CodeBuild ECR login fails → CodeBuild role missing ECR permissions
 
-## Cost estimation (demo environment, ap-northeast-1):
+## Cost estimation (demo environment, ap-southeast-1):
 - ECS Fargate (5 tasks × 0.25vCPU × 0.5GB): ~$15/month
 - RDS t3.micro: ~$20/month
 - API Gateway: ~$1/million requests

@@ -70,17 +70,17 @@ public class AuthController {
             userOptional = userRepository.findByEmail(username);
         }
 
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            if (user.getPasswordHash() != null && passwordEncoder.matches(password, user.getPasswordHash())) {
-                String jwtToken = jwtUtils.generateToken(username);
-                log.info("Local DB login successful for user: {}", username);
-                return ResponseEntity.ok(Map.of(
-                        "cognito_id_token", jwtToken, // reuse same field for compatibility
-                        "access_token", jwtToken
-                ));
-            }
-        }
+        // if (userOptional.isPresent()) {
+        //     User user = userOptional.get();
+        //     if (user.getPasswordHash() != null && passwordEncoder.matches(password, user.getPasswordHash())) {
+        //         String jwtToken = jwtUtils.generateToken(username);
+        //         log.info("Local DB login successful for user: {}", username);
+        //         return ResponseEntity.ok(Map.of(
+        //                 "cognito_id_token", jwtToken, // reuse same field for compatibility
+        //                 "access_token", jwtToken
+        //         ));
+        //     }
+        // }
 
         // Fall back to Cognito (for real AWS environment)
         try {

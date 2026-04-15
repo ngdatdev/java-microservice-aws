@@ -1,5 +1,8 @@
-server:
-  port: ${SERVER_PORT:8085}
+# ============================================================
+# Base — Always loaded.
+# Defaults for all environments.
+# Sensitive/environment-specific values come from env vars.
+# ============================================================
 
 spring:
   application:
@@ -9,6 +12,10 @@ spring:
     username: ${DB_USERNAME:admin}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,6 +23,15 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${SERVER_PORT:8085}
+
+services:
+  member:
+    url: ${MEMBER_SERVICE_URL:http://localhost:8081}
+  file:
+    url: ${FILE_SERVICE_URL:http://localhost:8082}
 
 management:
   endpoints:
@@ -27,15 +43,9 @@ management:
     health:
       show-details: always
 
-services:
-  member:
-    url: ${MEMBER_SERVICE_URL:http://localhost:8081}
-  file:
-    url: ${FILE_SERVICE_URL:http://localhost:8082}
-
 logging:
   level:
     root: INFO
-    com.demo.master: INFO
-    org.springframework.web: WARN
-    org.hibernate.SQL: OFF
+    "[com.demo.master]": INFO
+    "[org.springframework.web]": WARN
+    "[org.hibernate.SQL]": OFF

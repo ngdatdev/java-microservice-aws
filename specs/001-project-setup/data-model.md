@@ -6,7 +6,7 @@ The following variables are required for the local development environment to br
 
 | Variable | Description | Default (Local) |
 | :--- | :--- | :--- |
-| **AWS_REGION** | LocalStack region | `ap-northeast-1` |
+| **AWS_REGION** | LocalStack region | `ap-southeast-1` |
 | **AWS_ACCESS_KEY_ID** | Mock access key | `test` |
 | **AWS_SECRET_ACCESS_KEY** | Mock secret key | `test` |
 | **DB_HOST** | PostgreSQL container host | `localhost` |

@@ -11,7 +11,7 @@ import java.net.URI;
 @Configuration
 public class AwsConfig {
 
-    @Value("${aws.region:ap-northeast-1}")
+    @Value("${aws.region:ap-southeast-1}")
     private String region;
 
     /**

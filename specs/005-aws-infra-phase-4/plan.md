@@ -15,7 +15,7 @@ This feature involves implementing the full AWS infrastructure lifecycle for the
 **Primary Dependencies**: `aws-cdk-lib`, `constructs`, `jest` (for testing)  
 **Storage**: Amazon RDS PostgreSQL 15.4 (one instance with multiple DBs seeded via app)  
 **Testing**: CDK Assertions and Snapshot testing via Jest  
-**Target Platform**: AWS Cloud (Default region: `ap-northeast-1`)
+**Target Platform**: AWS Cloud (Default region: `ap-southeast-1`)
 **Project Type**: Infrastructure as Code (IaC) monorepo component  
 **Performance Goals**: Synthesis time < 1 min, Full deployment < 45 mins  
 **Constraints**: Single NAT Gateway for cost savings; db.t3.micro for RDS; 256 CPU / 512 MiB RAM for ECS tasks.  

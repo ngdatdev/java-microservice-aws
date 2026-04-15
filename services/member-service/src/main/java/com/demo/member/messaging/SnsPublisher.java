@@ -20,7 +20,7 @@ public class SnsPublisher {
     private final SnsClient snsClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${aws.sns.topic-arn:arn:aws:sns:ap-northeast-1:000000000000:global-notifications}")
+    @Value("${aws.sns.topic-arn:arn:aws:sns:ap-southeast-1:000000000000:global-notifications}")
     private String topicArn;
 
     public void publishMemberEvent(String eventType, Member member) {

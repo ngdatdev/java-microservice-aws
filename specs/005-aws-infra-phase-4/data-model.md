@@ -5,7 +5,7 @@
 ## Infrastructure Entities
 
 ### 1. Networking (VPC)
-- **VPC**: 10.0.0.0/16, ap-northeast-1, 2 AZs.
+- **VPC**: 10.0.0.0/16, ap-southeast-1, 2 AZs.
 - **Subnets**: Public (NAT only), Private (ECS, RDS).
 - **Security Groups**:
   - `ecsSg`: Service ports from `nlbSg`.

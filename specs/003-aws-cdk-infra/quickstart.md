@@ -22,7 +22,7 @@ docker-compose up localstack -d
 Cần chạy bootstrap lần đầu để CDK chuẩn bị các tài nguyên quản lý nội bộ trên LocalStack:
 ```bash
 cd infra
-npx cdklocal bootstrap aws://000000000000/ap-northeast-1
+npx cdklocal bootstrap aws://000000000000/ap-southeast-1
 ```
 
 ### Bước 3: Deploy hạ tầng

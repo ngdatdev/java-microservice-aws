@@ -1,5 +1,8 @@
-server:
-  port: ${SERVER_PORT:8083}
+# ============================================================
+# Base — Always loaded.
+# Defaults for all environments.
+# Sensitive/environment-specific values come from env vars.
+# ============================================================
 
 spring:
   application:
@@ -9,6 +12,10 @@ spring:
     username: ${DB_USERNAME:admin}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,6 +23,16 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${SERVER_PORT:8083}
+
+aws:
+  region: ${AWS_REGION:ap-southeast-1}
+  ses:
+    from-email: ${AWS_SES_FROM_EMAIL}
+  sqs:
+    mail-queue-url: ${AWS_SQS_MAIL_QUEUE_URL}
 
 management:
   endpoints:
@@ -27,16 +44,9 @@ management:
     health:
       show-details: always
 
-aws:
-  region: ${AWS_REGION:ap-southeast-1}
-  ses:
-    from-email: ${AWS_SES_FROM_EMAIL:no-reply@demo.com}
-  sqs:
-    mail-queue-url: ${AWS_SQS_MAIL_QUEUE_URL:http://localhost:4566/000000000000/mail-queue}
-
 logging:
   level:
     root: INFO
-    com.demo.mail: INFO
-    org.springframework.web: WARN
-    org.hibernate.SQL: OFF
+    "[com.demo.mail]": INFO
+    "[org.springframework.web]": WARN
+    "[org.hibernate.SQL]": OFF

@@ -105,6 +105,6 @@ As a Developer, I want to set up SNS and SQS resources so that my microservices 
 ## Assumptions
 
 - **LocalStack**: Local development continues to be supported via LocalStack for S3, SNS, SQS, and SES.
-- **AWS Regions**: Configuration is optimized for `ap-northeast-1` by default.
+- **AWS Regions**: Configuration is optimized for `ap-southeast-1` by default.
 - **Cognito**: Sandbox/Local restrictions are accepted during development (fallback to local auth).
 - **SES**: Domain/Email verification is assumed to be handled manually as a prerequisite.

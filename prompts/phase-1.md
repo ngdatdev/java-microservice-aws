@@ -79,7 +79,7 @@ aws-micro-demo/
 
 ## Environment variables needed (generate .env.example):
 # AWS
-AWS_REGION=ap-northeast-1
+AWS_REGION=ap-southeast-1
 AWS_ACCOUNT_ID=
 # RDS
 DB_HOST=localhost

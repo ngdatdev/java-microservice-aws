@@ -11,7 +11,7 @@ awslocal sqs create-queue --queue-name audit-queue
 
 # SNS Topics
 awslocal sns create-topic --name global-notifications
-awslocal sns subscribe --topic-arn arn:aws:sns:ap-northeast-1:000000000000:global-notifications --protocol sqs --notification-endpoint arn:aws:sqs:ap-northeast-1:000000000000:mail-queue
+awslocal sns subscribe --topic-arn arn:aws:sns:ap-southeast-1:000000000000:global-notifications --protocol sqs --notification-endpoint arn:aws:sqs:ap-southeast-1:000000000000:mail-queue
 
 # Cognito
 USER_POOL_ID=$(awslocal cognito-idp create-user-pool --pool-name demo-pool --query 'UserPool.Id' --output text)
