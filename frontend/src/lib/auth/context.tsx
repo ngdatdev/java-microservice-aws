@@ -45,17 +45,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      const { access_token, cognito_id_token } = response.data;
+      const { access_token, cognito_id_token, ChallengeName, session } = response.data;
+
+      // Handle MFA challenge
+      if (ChallengeName) {
+        localStorage.setItem("mfa_session", session || "");
+        localStorage.setItem("mfa_username", email);
+        toast.info("MFA verification required");
+        router.push("/verify-mfa");
+        return;
+      }
+
       const userObj = { email };
 
       localStorage.setItem("auth_token", access_token);
+      localStorage.setItem("cognito_id_token", cognito_id_token || "");
       localStorage.setItem("auth_user", JSON.stringify(userObj));
 
       setUser(userObj);
       toast.success("Login successful", {
         description: `Welcome back, ${email}`,
       });
-      router.push("/");
+      console.log("Redirecting to /");
+      window.location.replace("/");
     } catch (error) {
       // Error is handled by apiClient interceptor toast
       throw error;

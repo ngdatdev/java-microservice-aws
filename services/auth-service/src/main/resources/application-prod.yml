@@ -7,7 +7,6 @@ spring:
   config:
     activate:
       on-profile: prod
-
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     username: ${DB_USER}
@@ -27,10 +26,8 @@ spring:
 
 aws:
   cognito:
-    # No endpoint override → uses real AWS
-    # Credentials from IAM role / environment
-    user-pool-id: ${COGNITO_USER_POOL_ID}
-    client-id: ${COGNITO_CLIENT_ID}
+    user-pool-id: ${AWS_COGNITO_USER_POOL_ID}
+    client-id: ${AWS_COGNITO_CLIENT_ID}
 
 jwt:
   secret: ${JWT_SECRET}
