@@ -490,16 +490,15 @@ Create a VpcStack class that provisions:
 ### VPC:
 - VPC with CIDR 10.0.0.0/16
 - 2 Availability Zones
-- Public subnets (for ALB/NLB, NAT Gateway)
+- Public subnets (for NLB, NAT Gateway)
 - Private subnets (for ECS tasks, RDS)
 - NAT Gateway (1, for cost saving in demo)
 - Internet Gateway
 
 ### Security Groups (export for other stacks):
-1. albSg — ALB Security Group: inbound 80, 443 from 0.0.0.0/0
-2. ecsSg — ECS Tasks SG: inbound from albSg on service ports (8081-8085)
+1. nlbSg — NLB SG: inbound from API Gateway VPC Link
+2. ecsSg — ECS Tasks SG: inbound from nlbSg on service ports (8081-8085)
 3. rdsSg — RDS SG: inbound from ecsSg on port 5432
-4. nlbSg — NLB SG: inbound from API Gateway VPC Link
 
 ### Exports (CfnOutput):
 - VPC ID
@@ -610,16 +609,6 @@ For each service, create a FargateService:
 - Network Load Balancer in private subnets
 - Listeners for each service on unique ports (8081-8085)
 - Target groups pointing to ECS services
-
-### ALB (for direct access during demo):
-- Application Load Balancer in public subnets
-- Single listener on port 80
-- Path-based routing rules:
-  /api/v1/members/* → member-service:8081
-  /api/v1/files/*   → file-service:8082
-  /api/v1/mails/*   → mail-service:8083
-  /api/v1/auth/*    → auth-service:8084
-  /api/v1/master/*  → master-service:8085
 
 ### Auto Scaling:
 - CPU-based scaling (target 70%) for each service
@@ -834,11 +823,6 @@ Security headers (ResponseHeadersPolicy):
 
 Price class: PRICE_CLASS_100 (US/Europe only, cheapest)
 
-### 2. ALB Distribution (for direct service access in demo):
-- Origin: ALB DNS name
-- No caching (CachingDisabled)
-- Forward all headers
-
 ### OAC (Origin Access Control):
 - For S3 frontend bucket
 - Update S3 bucket policy to allow CloudFront OAC
@@ -874,15 +858,14 @@ Name: aws-micro-demo-dashboard-{envName}
 Widgets to add:
 1. ECS Service CPU Utilization (all 5 services) — line chart
 2. ECS Service Memory Utilization — line chart
-3. ALB Request Count — bar chart
-4. ALB 4xx/5xx Error Rate — line chart
-5. RDS CPU & Connections — line chart
-6. SQS Queue Depth (all queues) — number widgets
-7. SNS Messages Published — bar chart
+3. NLB TCP Reset Count — line chart
+4. RDS CPU & Connections — line chart
+5. SQS Queue Depth (all queues) — number widgets
+6. SNS Messages Published — bar chart
 
 ### Alarms:
 1. High CPU Alarm — any ECS service CPU > 80% for 5 min → SNS notification
-2. ALB 5xx Alarm — 5xx errors > 10 in 5 min → SNS notification
+2. NLB TCP Reset Alarm — TCP resets > 10 in 5 min → SNS notification
 3. SQS DLQ Alarm — any DLQ has > 0 messages → SNS notification
 4. RDS High CPU — RDS CPU > 80% → SNS notification
 

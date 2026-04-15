@@ -6,10 +6,9 @@
 
 ### 1. Networking (VPC)
 - **VPC**: 10.0.0.0/16, ap-northeast-1, 2 AZs.
-- **Subnets**: Public (ALB, NAT), Private (ECS, RDS).
+- **Subnets**: Public (NAT only), Private (ECS, RDS).
 - **Security Groups**:
-  - `albSg`: HTTP/HTTPS from 0.0.0.0/0.
-  - `ecsSg`: Service ports from `albSg`.
+  - `ecsSg`: Service ports from `nlbSg`.
   - `rdsSg`: PostgreSQL (5432) from `ecsSg`.
   - `nlbSg`: TCP traffic from API Gateway VPC Link.
 

@@ -8,12 +8,11 @@ Tài liệu này bóc tách chi tiết từng cụm tài nguyên AWS trong hệ 
 *Ranh giới vật lý tuyệt đối của toàn bộ dữ liệu.*
 
 - **VPC (`10.0.0.0/16`):** Vùng phủ sóng mạng độc lập. Chúng ta chia ra 2 Availability Zones (AZ) để chống chết server (nếu data center AWS A bị chập điện, AZ B tự gánh tải).
-- **Public Subnet:** Chứa ALB và NAT Gateway. Nhìn chung rất ít tài nguyên nào nằm ở đây vì nó lộ ra Internet.
+- **Public Subnet:** Chứa NAT Gateway. Nhìn chung rất ít tài nguyên nào nằm ở đây vì nó lộ ra Internet.
 - **Private Subnet:** Chứa ECS Fargate, NLB, RDS. Gần như vô hình từ bên ngoài.
 - **NAT Gateway (Cost-saving mode):** Giá thiết lập 1 NAT Gateway trên AWS khoảng ~$32/tháng. Ở chế độ tối ưu hiện tại, chúng ta chỉ dựng **1 NAT Gateway (thay vì 2 cái trên 2 AZ)**. *Lưu ý: Nếu lên Production xịn, bạn cần đổi biến `maxAzs: 2` và `natGateways: 2` trong file `vpc-stack.ts` để đạt chuẩn High Availability tuyệt đối.*
-- **Security Groups (SG):** Chúng ta có 4 SGs.
-  - `alb-sg`: Tiếp đón port 80/443 từ Public `0.0.0.0/0`.
-  - `ecs-sg`: Không hề mở ra Public. Nó chỉ nhận kết nối vào port 8081-8085 nếu gốc gác (Source) đến từ thằng `nlb-sg` hoặc `alb-sg`.
+- **Security Groups (SG):** Chúng ta có 3 SGs.
+  - `ecs-sg`: Không hề mở ra Public. Nó chỉ nhận kết nối vào port 8081-8085 nếu gốc gác (Source) đến từ thằng `nlb-sg`.
   - `rds-sg`: Khóa chết. Chỉ bọn nào đeo huy hiệu `ecs-sg` mới được chui vào màng port 5432.
 
 ---

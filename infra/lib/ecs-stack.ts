@@ -28,7 +28,6 @@ export interface ServiceDefinition {
 export interface EcsStackProps extends cdk.StackProps {
   envName: string;
   vpc: ec2.IVpc;
-  albSg: ec2.ISecurityGroup;
   ecsSg: ec2.ISecurityGroup;
   nlbSg: ec2.ISecurityGroup;
   repositories: Record<string, ecr.IRepository>;
@@ -54,13 +53,12 @@ const SERVICE_DEFINITIONS: ServiceDefinition[] = [
 export class EcsStack extends cdk.Stack {
   public readonly cluster: ecs.ICluster;
   public readonly nlb: elbv2.INetworkLoadBalancer;
-  public readonly alb: elbv2.IApplicationLoadBalancer;
   public readonly services: Record<string, ecs.FargateService>;
 
   constructor(scope: Construct, id: string, props: EcsStackProps) {
     super(scope, id, props);
 
-    const { envName, vpc, albSg, ecsSg, nlbSg, repositories, dbSecret,
+    const { envName, vpc, ecsSg, nlbSg, repositories, dbSecret,
             userPoolArn, memberEventsTopicArn, fileEventsTopicArn,
             notificationsTopicArn, mailQueueArn, auditQueueArn,
             storageBucketArn } = props;
@@ -78,21 +76,7 @@ export class EcsStack extends cdk.Stack {
       description: 'Cloud Map namespace for aws-micro-demo services',
     });
 
-    // T015: Application Load Balancer with path-based routing
-    this.alb = new elbv2.ApplicationLoadBalancer(this, 'DemoAlb', {
-      loadBalancerName: `aws-micro-demo-alb-${envName}`,
-      vpc,
-      internetFacing: true,
-      securityGroup: albSg,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-    });
-
-    const httpListener = this.alb.addListener('HttpListener', {
-      port: 80,
-      open: false,
-    });
-
-    // T016: Internal NLB for VPC Link
+    // T016: Internal NLB for API Gateway VPC Link
     this.nlb = new elbv2.NetworkLoadBalancer(this, 'DemoNlb', {
       loadBalancerName: `aws-micro-demo-nlb-${envName}`,
       vpc,
@@ -246,31 +230,6 @@ export class EcsStack extends cdk.Stack {
 
       this.services[svcDef.name] = fargateService;
 
-      // T015: ALB path-based target group
-      const albTargetGroup = new elbv2.ApplicationTargetGroup(this, `${svcId}AlbTg`, {
-        targetGroupName: `${svcDef.name.substring(0, 22)}-alb-tg`,
-        vpc,
-        port: svcDef.port,
-        protocol: elbv2.ApplicationProtocol.HTTP,
-        targets: [fargateService],
-        healthCheck: {
-          path: `/api/v1/${svcDef.name.replace('-service', 's')}/health`,
-          interval: cdk.Duration.seconds(30),
-          healthyThresholdCount: 2,
-          unhealthyThresholdCount: 3,
-        },
-      });
-
-      // Register path rule on ALB listener
-      const pathPrefix = svcDef.name.replace('-service', 's');
-      httpListener.addTargetGroups(`${svcId}AlbRule`, {
-        priority: SERVICE_DEFINITIONS.indexOf(svcDef) + 1,
-        conditions: [
-          elbv2.ListenerCondition.pathPatterns([`/api/v1/${pathPrefix}/*`]),
-        ],
-        targetGroups: [albTargetGroup],
-      });
-
       // T016: NLB listener + target group per service port
       const nlbTargetGroup = new elbv2.NetworkTargetGroup(this, `${svcId}NlbTg`, {
         targetGroupName: `${svcDef.name.substring(0, 22)}-nlb-tg`,
@@ -294,22 +253,10 @@ export class EcsStack extends cdk.Stack {
       });
     }
 
-    // Default ALB action: 404
-    httpListener.addAction('DefaultAction', {
-      action: elbv2.ListenerAction.fixedResponse(404, {
-        messageBody: 'Not found',
-      }),
-    });
-
     // Outputs
     new cdk.CfnOutput(this, 'ClusterName', {
       value: this.cluster.clusterName,
       exportName: `${envName}-ClusterName`,
-    });
-    new cdk.CfnOutput(this, 'AlbDnsName', {
-      value: this.alb.loadBalancerDnsName,
-      description: 'ALB DNS Name',
-      exportName: `${envName}-AlbDnsName`,
     });
     new cdk.CfnOutput(this, 'NlbDnsName', {
       value: this.nlb.loadBalancerDnsName,

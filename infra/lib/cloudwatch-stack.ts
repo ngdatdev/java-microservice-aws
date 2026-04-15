@@ -105,26 +105,26 @@ export class CloudWatchStack extends cdk.Stack {
       alarms.push(cpuAlarm);
     }
 
-    // T024: 5xx Error Rate Alarm on ALB
-    const alb5xxMetric = new cloudwatch.Metric({
-      namespace: 'AWS/ApplicationELB',
-      metricName: 'HTTPCode_ELB_5XX_Count',
+    // T024: TCP Reset Rate Alarm on NLB
+    const nlbTcpResetMetric = new cloudwatch.Metric({
+      namespace: 'AWS/NetworkELB',
+      metricName: 'TCP_Reset_Count',
       statistic: 'Sum',
       period: cdk.Duration.minutes(1),
     });
 
-    const alb5xxAlarm = new cloudwatch.Alarm(this, 'Alb5xxAlarm', {
-      alarmName: `aws-micro-demo-alb-5xx-high-${envName}`,
-      alarmDescription: 'ALB 5xx error count > 10 per minute',
-      metric: alb5xxMetric,
+    const nlbTcpResetAlarm = new cloudwatch.Alarm(this, 'NlbTcpResetAlarm', {
+      alarmName: `aws-micro-demo-nlb-tcp-reset-high-${envName}`,
+      alarmDescription: 'NLB TCP reset count > 10 per minute',
+      metric: nlbTcpResetMetric,
       threshold: 10,
       evaluationPeriods: 3,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
-    alb5xxAlarm.addAlarmAction(alarmAction);
-    alarms.push(alb5xxAlarm);
+    nlbTcpResetAlarm.addAlarmAction(alarmAction);
+    alarms.push(nlbTcpResetAlarm);
 
     // DLQ depth alarm
     const mailDlq = sqs.Queue.fromQueueArn(this, 'MailDlqRef', props.mailDlqArn);
@@ -153,8 +153,8 @@ export class CloudWatchStack extends cdk.Stack {
     });
 
     const errorWidget = new cloudwatch.GraphWidget({
-      title: 'ALB 5xx Errors',
-      left: [alb5xxMetric],
+      title: 'NLB TCP Resets',
+      left: [nlbTcpResetMetric],
       width: 8,
       height: 6,
     });

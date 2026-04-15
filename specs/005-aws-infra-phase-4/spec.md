@@ -44,12 +44,12 @@ As a DevOps Engineer, I want to configure ECS Fargate services and ECR repositor
 
 **Why this priority**: Core compute layer for the application logic.
 
-**Independent Test**: Can be verified by checking service health in the ECS console and accessibility via the ALB.
+**Independent Test**: Can be verified by checking service health in the ECS console and accessibility via the NLB through API Gateway.
 
 **Acceptance Scenarios**:
 
 1. **Given** all 5 services have Docker images in ECR, **When** I deploy the EcsStack, **Then** 5 Fargate services are running with 1 task each.
-2. **Given** the services are running, **When** traffic hits the ALB on port 80 with specific paths (e.g., `/api/v1/members/*`), **Then** it is routed to the correct ECS service.
+2. **Given** the services are running, **When** traffic hits the NLB on service ports (8081-8085) through API Gateway VPC Link, **Then** it is routed to the correct ECS service.
 
 ---
 

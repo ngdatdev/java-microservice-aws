@@ -696,7 +696,7 @@ const vpc = new ec2.Vpc(this, 'MainVPC', {
   maxAzs: 2,                        // 2 AZs cho HA, tiết kiệm hơn 3
   cidr: '10.0.0.0/16',
 
-  // Public subnets — ALB, NAT Gateway
+  // Public subnets — NAT Gateway
   publicSubnetMask: 24,             // /24 mỗi AZ
 
   // Private subnets — ECS tasks, RDS

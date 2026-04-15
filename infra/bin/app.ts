@@ -53,7 +53,6 @@ const s3Stack = new S3Stack(app, `S3Stack-${envName}`, { ...stackProps });
 const ecsStack = new EcsStack(app, `EcsStack-${envName}`, {
   ...stackProps,
   vpc: vpcStack.vpc,
-  albSg: vpcStack.albSg,
   ecsSg: vpcStack.ecsSg,
   nlbSg: vpcStack.nlbSg,
   repositories: ecrStack.repositories,

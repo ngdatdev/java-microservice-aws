@@ -67,18 +67,17 @@
 
 ## Phase 5: User Story 3 - Container Orchestration (Priority: P2)
 
-**Goal**: Deploy ECS Fargate cluster and services with path-based routing via ALB
+**Goal**: Deploy ECS Fargate cluster and services with path-based routing via NLB
 
-**Independent Test**: Access each microservice health check via the ALB DNS.
+**Independent Test**: Access each microservice health check via the NLB DNS.
 
 ### Implementation for User Story 3
 
 - [x] T013 [US3] Create ECS Cluster and Cloud Map namespace in `infra/lib/ecs-stack.ts`
 - [x] T014 [US3] Define Fargate Task Definitions (CPU 256, MEM 512) in `infra/lib/ecs-stack.ts`
-- [x] T015 [US3] Configure Application Load Balancer (ALB) and path-based listeners in `infra/lib/ecs-stack.ts`
-- [x] T016 [US3] Setup internal NLB and Target Groups for VPC Link in `infra/lib/ecs-stack.ts`
+- [x] T016 [US3] Setup internal NLB and Target Groups for API Gateway VPC Link in `infra/lib/ecs-stack.ts`
 
-**Checkpoint**: Microservices are running and reachable via the ALB.
+**Checkpoint**: Microservices are running and reachable via the NLB through API Gateway.
 
 ---
 
