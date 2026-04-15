@@ -57,14 +57,20 @@ const ecsStack = new EcsStack(app, `EcsStack-${envName}`, {
   nlbSg: vpcStack.nlbSg,
   repositories: ecrStack.repositories,
   dbSecret: rdsStack.dbSecret,
-  // ARN inputs for explicit IAM — lấy từ Cognito + S3 stacks
+  dbHost: rdsStack.dbInstance.dbInstanceEndpointAddress,
+  // ARN inputs for IAM + environment variables
   userPoolArn: cognitoStack.userPool.userPoolArn,
+  cognitoUserPoolId: (cognitoStack.userPool as any).userPoolId,
+  cognitoClientId: cognitoStack.userPoolClient.userPoolClientId,
   memberEventsTopicArn: snsSqsStack.memberEventsTopic.topicArn,
   fileEventsTopicArn: snsSqsStack.fileEventsTopic.topicArn,
   notificationsTopicArn: snsSqsStack.notificationsTopic.topicArn,
   mailQueueArn: snsSqsStack.mailServiceQueue.queueArn,
+  mailQueueUrl: snsSqsStack.mailServiceQueue.queueUrl,
   auditQueueArn: snsSqsStack.memberEventQueue.queueArn,
   storageBucketArn: s3Stack.storageBucket.bucketArn,
+  storageBucketName: s3Stack.storageBucket.bucketName,
+  awsRegion: awsRegion,
 });
 ecsStack.addDependency(vpcStack);
 ecsStack.addDependency(ecrStack);

@@ -6,10 +6,12 @@ export interface MasterServiceIAMProps {
   dbSecretArn: string;
 }
 
+export interface MasterServiceExecutionRoleProps {
+  envName: string;
+}
+
 /**
- * Master Service IAM Role + Policy
- * Permissions: Internal orchestration — gọi member-service, file-service, auth-service
- *              Chỉ cần DB credentials để đọc dữ liệu tổng hợp
+ * Master Service Task Role — Permissions: Secrets Manager (DB credentials) + API Gateway (internal calls)
  */
 export function createMasterServiceIAM(scope: Construct, props: MasterServiceIAMProps): iam.Role {
   const { envName, dbSecretArn } = props;
@@ -20,32 +22,24 @@ export function createMasterServiceIAM(scope: Construct, props: MasterServiceIAM
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
   });
 
-  // Policy: Secrets Manager — chỉ đọc DB credentials
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SecretsManagerRead',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'secretsmanager:GetSecretValue',
-        'secretsmanager:DescribeSecret',
-      ],
+      actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
       resources: [dbSecretArn],
     })
   );
 
-  // Policy: Internal HTTP calls — master-service gọi các service khác qua ALB
-  // Quyền này cho phép master-service gọi internal endpoints
+  // Allow internal service calls via API Gateway
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'InternalServiceCalls',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'execute-api:Invoke',
-        'execute-api:ManageConnections',
-      ],
+      actions: ['execute-api:Invoke', 'execute-api:ManageConnections'],
       resources: [
-        `arn:aws:execute-api:*:*:api/*/*/*`,
-        `arn:aws:execute-api:*:*:vpclink/*`,
+        'arn:aws:execute-api:*:*:api/*/*/*',
+        'arn:aws:execute-api:*:*:vpclink/*',
       ],
     })
   );
@@ -54,9 +48,9 @@ export function createMasterServiceIAM(scope: Construct, props: MasterServiceIAM
 }
 
 /**
- * Master Service Execution Role (pull image + write logs)
+ * Master Service Execution Role — Permissions: pull image + write logs
  */
-export function createMasterServiceExecutionRole(scope: Construct, props: MasterServiceIAMProps): iam.Role {
+export function createMasterServiceExecutionRole(scope: Construct, props: MasterServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'MasterServiceExecutionRole', {

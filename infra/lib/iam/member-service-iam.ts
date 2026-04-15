@@ -8,9 +8,12 @@ export interface MemberServiceIAMProps {
   dbSecretArn: string;
 }
 
+export interface MemberServiceExecutionRoleProps {
+  envName: string;
+}
+
 /**
- * Member Service IAM Role + Policy
- * Permissions: SNS Publish (member events) + SQS Send (audit) + Secrets Manager
+ * Member Service Task Role — Permissions: SNS Publish (member events) + SQS Send (audit) + Secrets Manager
  */
 export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAMProps): iam.Role {
   const { envName, memberEventsTopicArn, auditQueueArn, dbSecretArn } = props;
@@ -21,44 +24,29 @@ export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAM
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
   });
 
-  // Policy: SNS Publish — chỉ topic member-events
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SNSPublish',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'sns:Publish',
-        'sns:CreateTopic',
-        'sns:GetTopicAttributes',
-      ],
+      actions: ['sns:Publish', 'sns:CreateTopic', 'sns:GetTopicAttributes'],
       resources: [memberEventsTopicArn],
     })
   );
 
-  // Policy: SQS Audit Queue — gửi audit events
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SQSAudit',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'sqs:SendMessage',
-        'sqs:SendMessageBatch',
-        'sqs:GetQueueUrl',
-        'sqs:GetQueueAttributes',
-      ],
+      actions: ['sqs:SendMessage', 'sqs:SendMessageBatch', 'sqs:GetQueueUrl', 'sqs:GetQueueAttributes'],
       resources: [auditQueueArn],
     })
   );
 
-  // Policy: Secrets Manager — chỉ đọc DB credentials
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SecretsManagerRead',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'secretsmanager:GetSecretValue',
-        'secretsmanager:DescribeSecret',
-      ],
+      actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
       resources: [dbSecretArn],
     })
   );
@@ -67,9 +55,9 @@ export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAM
 }
 
 /**
- * Member Service Execution Role (pull image + write logs)
+ * Member Service Execution Role — Permissions: pull image + write logs
  */
-export function createMemberServiceExecutionRole(scope: Construct, props: MemberServiceIAMProps): iam.Role {
+export function createMemberServiceExecutionRole(scope: Construct, props: MemberServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'MemberServiceExecutionRole', {

@@ -1,33 +1,38 @@
 # ============================================================
-# Base — ALWAYS loaded before any profile.
-# Secrets (password, JWT secret) MUST come from env vars or
-# external secrets manager. Never hardcode here.
+# Base — Always loaded.
+# All config comes from environment variables injected by CDK.
 # ============================================================
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/auth_db
-    username: ${DB_USER:admin}
-    password: ${DB_PASSWORD:password}
+    url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME:auth_db}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8084}
 
 aws:
-  region: ap-northeast-1
+  region: ${AWS_REGION}
   cognito:
     auth-flow: ADMIN_NO_SRP_AUTH
 
 jwt:
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 management:

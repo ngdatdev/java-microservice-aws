@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx cdk:*)"
+      "Bash(npx cdk:*)",
+      "Bash(node -e \"const s = require\\('aws-cdk-lib/aws-codebuild'\\); console.log\\(Object.keys\\(s.Artifacts\\).filter\\(k => k.includes\\('None'\\) || k.includes\\('No'\\) || k.includes\\('Source'\\)\\)\\)\")",
+      "Bash(node -e \"const s = require\\('aws-cdk-lib/aws-codebuild'\\); console.log\\(Object.keys\\(s.Source\\).filter\\(k => k.includes\\('None'\\) || k.includes\\('No'\\) || k.includes\\('S3'\\)\\)\\)\")",
+      "Bash(node -e \"const s = require\\('aws-cdk-lib/aws-codebuild'\\); console.log\\(Object.keys\\(s.Artifacts\\)\\); console.log\\(Object.keys\\(s.Source\\)\\)\")"
     ]
   }
 }

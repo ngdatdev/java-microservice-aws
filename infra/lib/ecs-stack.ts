@@ -32,14 +32,24 @@ export interface EcsStackProps extends cdk.StackProps {
   nlbSg: ec2.ISecurityGroup;
   repositories: Record<string, ecr.IRepository>;
   dbSecret: secretsmanager.ISecret;
-  // ARN inputs for IAM
+  // RDS connection
+  dbHost: string;
+  // Cognito
   userPoolArn: string;
+  cognitoUserPoolId: string;
+  cognitoClientId: string;
+  // SNS/SQS
   memberEventsTopicArn: string;
   fileEventsTopicArn: string;
   notificationsTopicArn: string;
   mailQueueArn: string;
+  mailQueueUrl: string;
   auditQueueArn: string;
+  // S3
   storageBucketArn: string;
+  storageBucketName: string;
+  // Region
+  awsRegion: string;
 }
 
 const SERVICE_DEFINITIONS: ServiceDefinition[] = [
@@ -59,9 +69,20 @@ export class EcsStack extends cdk.Stack {
     super(scope, id, props);
 
     const { envName, vpc, ecsSg, nlbSg, repositories, dbSecret,
-            userPoolArn, memberEventsTopicArn, fileEventsTopicArn,
-            notificationsTopicArn, mailQueueArn, auditQueueArn,
-            storageBucketArn } = props;
+            dbHost, userPoolArn, cognitoUserPoolId, cognitoClientId,
+            memberEventsTopicArn, fileEventsTopicArn, notificationsTopicArn,
+            mailQueueArn, mailQueueUrl, auditQueueArn,
+            storageBucketArn, storageBucketName, awsRegion } = props;
+
+    // ─── JWT Secret (managed by CDK, injected as ECS secret) ───────────────────
+    const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
+      secretName: `/aws-micro-demo/${envName}/jwt-secret`,
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ secret: 'default-jwt-secret-replace-me' }),
+        generateStringKey: 'secret',
+        passwordLength: 64,
+      },
+    });
 
     // T013: ECS Cluster with Container Insights + Cloud Map namespace
     this.cluster = new ecs.Cluster(this, 'DemoCluster', {
@@ -90,66 +111,28 @@ export class EcsStack extends cdk.Stack {
     // ============================================================
 
     // Auth Service IAM
-    const authTaskRole = createAuthServiceIAM(this, {
-      envName,
-      userPoolArn,
-      dbSecretArn: dbSecret.secretArn,
-    });
-    const authExecutionRole = createAuthServiceExecutionRole(this, {
-      envName,
-      userPoolArn,
-      dbSecretArn: dbSecret.secretArn,
-    });
+    const authTaskRole = createAuthServiceIAM(this, { envName, userPoolArn, dbSecretArn: dbSecret.secretArn });
+    const authExecutionRole = createAuthServiceExecutionRole(this, { envName });
 
     // Member Service IAM
     const memberTaskRole = createMemberServiceIAM(this, {
-      envName,
-      memberEventsTopicArn,
-      auditQueueArn,
-      dbSecretArn: dbSecret.secretArn,
+      envName, memberEventsTopicArn, auditQueueArn, dbSecretArn: dbSecret.secretArn,
     });
-    const memberExecutionRole = createMemberServiceExecutionRole(this, {
-      envName,
-      memberEventsTopicArn,
-      auditQueueArn,
-      dbSecretArn: dbSecret.secretArn,
-    });
+    const memberExecutionRole = createMemberServiceExecutionRole(this, { envName });
 
     // File Service IAM
     const fileTaskRole = createFileServiceIAM(this, {
-      envName,
-      storageBucketArn,
-      fileEventsTopicArn,
-      dbSecretArn: dbSecret.secretArn,
+      envName, storageBucketArn, fileEventsTopicArn, dbSecretArn: dbSecret.secretArn,
     });
-    const fileExecutionRole = createFileServiceExecutionRole(this, {
-      envName,
-      storageBucketArn,
-      fileEventsTopicArn,
-      dbSecretArn: dbSecret.secretArn,
-    });
+    const fileExecutionRole = createFileServiceExecutionRole(this, { envName });
 
     // Mail Service IAM
-    const mailTaskRole = createMailServiceIAM(this, {
-      envName,
-      mailQueueArn,
-      notificationsTopicArn,
-    });
-    const mailExecutionRole = createMailServiceExecutionRole(this, {
-      envName,
-      mailQueueArn,
-      notificationsTopicArn,
-    });
+    const mailTaskRole = createMailServiceIAM(this, { envName, mailQueueArn, notificationsTopicArn });
+    const mailExecutionRole = createMailServiceExecutionRole(this, { envName });
 
     // Master Service IAM
-    const masterTaskRole = createMasterServiceIAM(this, {
-      envName,
-      dbSecretArn: dbSecret.secretArn,
-    });
-    const masterExecutionRole = createMasterServiceExecutionRole(this, {
-      envName,
-      dbSecretArn: dbSecret.secretArn,
-    });
+    const masterTaskRole = createMasterServiceIAM(this, { envName, dbSecretArn: dbSecret.secretArn });
+    const masterExecutionRole = createMasterServiceExecutionRole(this, { envName });
 
     // Map service name -> IAM roles
     const taskRoles: Record<string, any> = {
@@ -166,6 +149,71 @@ export class EcsStack extends cdk.Stack {
       'file-service': fileExecutionRole,
       'mail-service': mailExecutionRole,
       'master-service': masterExecutionRole,
+    };
+
+    // Map service name -> environment variables
+    const serviceEnvVars: Record<string, Record<string, string>> = {
+      'auth-service': {
+        DB_HOST: dbHost,
+        DB_NAME: 'auth_db',
+        AWS_REGION: awsRegion,
+        COGNITO_USER_POOL_ID: cognitoUserPoolId,
+        COGNITO_CLIENT_ID: cognitoClientId,
+      },
+      'member-service': {
+        DB_HOST: dbHost,
+        DB_NAME: 'member_db',
+        AWS_REGION: awsRegion,
+        AWS_SNS_MEMBER_EVENTS_TOPIC_ARN: memberEventsTopicArn,
+        AWS_SQS_AUDIT_QUEUE_URL: auditQueueArn.replace(':/', '://').replace('/arn:', '/').replace(/\/.*/, '') + '/audit-queue-url-placeholder',
+      },
+      'file-service': {
+        DB_HOST: dbHost,
+        DB_NAME: 'file_db',
+        AWS_REGION: awsRegion,
+        AWS_S3_BUCKET_NAME: storageBucketName,
+        AWS_SNS_FILE_EVENTS_TOPIC_ARN: fileEventsTopicArn,
+      },
+      'mail-service': {
+        DB_HOST: dbHost,
+        DB_NAME: 'mail_db',
+        AWS_REGION: awsRegion,
+        AWS_SES_FROM_EMAIL: `no-reply@demo.com`,
+        AWS_SQS_MAIL_QUEUE_URL: mailQueueUrl,
+      },
+      'master-service': {
+        DB_HOST: dbHost,
+        DB_NAME: 'master_db',
+        AWS_REGION: awsRegion,
+        // Inter-service URLs via Cloud Map DNS
+        MEMBER_SERVICE_URL: 'http://member-service.service.local:8081',
+        FILE_SERVICE_URL: 'http://file-service.service.local:8082',
+      },
+    };
+
+    // Map service name -> secrets (ECS Secret)
+    const serviceSecrets: Record<string, Record<string, ecs.Secret>> = {
+      'auth-service': {
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+        JWT_SECRET: ecs.Secret.fromSecretsManager(jwtSecret, 'secret'),
+      },
+      'member-service': {
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+      },
+      'file-service': {
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+      },
+      'mail-service': {
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+      },
+      'master-service': {
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+      },
     };
 
     this.services = {};
@@ -185,7 +233,6 @@ export class EcsStack extends cdk.Stack {
       });
 
       // T014: Task Definition — CPU 256, MEM 512
-      // Sử dụng EXPLICIT IAM roles (best practice)
       const taskDef = new ecs.FargateTaskDefinition(this, `${svcId}TaskDef`, {
         family: `aws-micro-demo-${svcDef.name}-${envName}`,
         taskRole: taskRoles[svcDef.name],
@@ -194,7 +241,7 @@ export class EcsStack extends cdk.Stack {
         memoryLimitMiB: 512,
       });
 
-      const container = taskDef.addContainer(`${svcId}Container`, {
+      taskDef.addContainer(`${svcId}Container`, {
         image: ecs.ContainerImage.fromEcrRepository(repo, 'latest'),
         containerName: svcDef.name,
         portMappings: [{ containerPort: svcDef.port, protocol: ecs.Protocol.TCP }],
@@ -205,13 +252,12 @@ export class EcsStack extends cdk.Stack {
         environment: {
           SPRING_PROFILES_ACTIVE: envName,
           SERVER_PORT: String(svcDef.port),
+          ...serviceEnvVars[svcDef.name],
         },
         secrets: {
-          DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password'),
-          DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, 'username'),
+          ...serviceSecrets[svcDef.name],
         },
       });
-      container.addPortMappings({ containerPort: svcDef.port });
 
       // T013: Fargate Service with Cloud Map service discovery
       const fargateService = new ecs.FargateService(this, `${svcId}Service`, {
@@ -246,10 +292,11 @@ export class EcsStack extends cdk.Stack {
         },
       });
 
+      // NLB listener — target group will be registered by ApiGatewayNlbStack
       this.nlb.addListener(`${svcId}NlbListener`, {
         port: svcDef.port,
         protocol: elbv2.Protocol.TCP,
-        defaultTargetGroups: [nlbTargetGroup],
+        defaultAction: elbv2.NetworkListenerAction.forward([nlbTargetGroup]),
       });
     }
 

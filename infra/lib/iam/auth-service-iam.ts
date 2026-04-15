@@ -7,9 +7,12 @@ export interface AuthServiceIAMProps {
   dbSecretArn: string;
 }
 
+export interface AuthServiceExecutionRoleProps {
+  envName: string;
+}
+
 /**
- * Auth Service IAM Role + Policy
- * Permissions: Cognito (admin auth) + Secrets Manager (DB credentials)
+ * Auth Service Task Role — Permissions: Cognito (admin auth) + Secrets Manager (DB credentials)
  */
 export function createAuthServiceIAM(scope: Construct, props: AuthServiceIAMProps): iam.Role {
   const { envName, userPoolArn, dbSecretArn } = props;
@@ -20,7 +23,6 @@ export function createAuthServiceIAM(scope: Construct, props: AuthServiceIAMProp
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
   });
 
-  // Policy: Cognito
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'CognitoAuth',
@@ -43,15 +45,11 @@ export function createAuthServiceIAM(scope: Construct, props: AuthServiceIAMProp
     })
   );
 
-  // Policy: Secrets Manager
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SecretsManagerRead',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'secretsmanager:GetSecretValue',
-        'secretsmanager:DescribeSecret',
-      ],
+      actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
       resources: [dbSecretArn],
     })
   );
@@ -60,9 +58,9 @@ export function createAuthServiceIAM(scope: Construct, props: AuthServiceIAMProp
 }
 
 /**
- * Auth Service Execution Role (pull image + write logs)
+ * Auth Service Execution Role — Permissions: pull image + write logs
  */
-export function createAuthServiceExecutionRole(scope: Construct, props: AuthServiceIAMProps): iam.Role {
+export function createAuthServiceExecutionRole(scope: Construct, props: AuthServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'AuthServiceExecutionRole', {

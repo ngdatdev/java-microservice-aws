@@ -1,5 +1,5 @@
 server:
-  port: 8082
+  port: ${SERVER_PORT:8082}
 
 spring:
   application:
@@ -9,14 +9,14 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/file_db
-    username: ${DB_USER:admin}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:file_db}
+    username: ${DB_USERNAME:admin}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -31,19 +31,16 @@ management:
     health:
       show-details: always
 
-# AWS Simulation (LocalStack)
 aws:
-  region: ${AWS_REGION:ap-northeast-1}
+  region: ${AWS_REGION:ap-southeast-1}
   s3:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    bucket-name: demo-uploads
+    bucket-name: ${AWS_S3_BUCKET_NAME:demo-uploads}
   sns:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    topic-arn: ${AWS_SNS_FILE_EVENTS_ARN:arn:aws:sns:ap-northeast-1:000000000000:file-events}
+    topic-arn: ${AWS_SNS_FILE_EVENTS_TOPIC_ARN:arn:aws:sns:ap-southeast-1:000000000000:file-events}
 
 logging:
   level:
     root: INFO
-    com.demo.file: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    com.demo.file: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: OFF

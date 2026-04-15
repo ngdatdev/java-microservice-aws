@@ -7,9 +7,12 @@ export interface MailServiceIAMProps {
   notificationsTopicArn: string;
 }
 
+export interface MailServiceExecutionRoleProps {
+  envName: string;
+}
+
 /**
- * Mail Service IAM Role + Policy
- * Permissions: SQS Receive (mail queue) + SES Send (email) + SNS (notifications)
+ * Mail Service Task Role — Permissions: SQS Receive (mail queue) + SES Send (email) + SNS (notifications)
  */
 export function createMailServiceIAM(scope: Construct, props: MailServiceIAMProps): iam.Role {
   const { envName, mailQueueArn, notificationsTopicArn } = props;
@@ -20,47 +23,30 @@ export function createMailServiceIAM(scope: Construct, props: MailServiceIAMProp
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
   });
 
-  // Policy: SQS Mail Queue — nhận email tasks từ queue
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SQSMailQueue',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'sqs:ReceiveMessage',
-        'sqs:DeleteMessage',
-        'sqs:GetQueueUrl',
-        'sqs:GetQueueAttributes',
-        'sqs:ListQueues',
-      ],
+      actions: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueUrl', 'sqs:GetQueueAttributes', 'sqs:ListQueues'],
       resources: [mailQueueArn],
     })
   );
 
-  // Policy: SES Send Email — gửi email thật
+  // SES permissions — restrict to verified identity in production
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SESSendEmail',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'ses:SendEmail',
-        'ses:SendRawEmail',
-        'ses:SendTemplatedEmail',
-        'ses:DescribeEmailIdentity',
-        'ses:ListIdentities',
-      ],
-      resources: ['*'],  // SES Identity ARN cụ thể sẽ được set qua env
+      actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail', 'ses:DescribeEmailIdentity', 'ses:ListIdentities'],
+      resources: ['*'],
     })
   );
 
-  // Policy: SNS Notifications — publish notifications
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SNSNotifications',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'sns:Publish',
-        'sns:GetTopicAttributes',
-      ],
+      actions: ['sns:Publish', 'sns:GetTopicAttributes'],
       resources: [notificationsTopicArn],
     })
   );
@@ -69,9 +55,9 @@ export function createMailServiceIAM(scope: Construct, props: MailServiceIAMProp
 }
 
 /**
- * Mail Service Execution Role (pull image + write logs)
+ * Mail Service Execution Role — Permissions: pull image + write logs
  */
-export function createMailServiceExecutionRole(scope: Construct, props: MailServiceIAMProps): iam.Role {
+export function createMailServiceExecutionRole(scope: Construct, props: MailServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'MailServiceExecutionRole', {

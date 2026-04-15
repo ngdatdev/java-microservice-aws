@@ -8,9 +8,12 @@ export interface FileServiceIAMProps {
   dbSecretArn: string;
 }
 
+export interface FileServiceExecutionRoleProps {
+  envName: string;
+}
+
 /**
- * File Service IAM Role + Policy
- * Permissions: S3 (upload/download/delete) + SNS Publish (file events) + Secrets Manager
+ * File Service Task Role — Permissions: S3 (upload/download/delete) + SNS Publish (file events) + Secrets Manager
  */
 export function createFileServiceIAM(scope: Construct, props: FileServiceIAMProps): iam.Role {
   const { envName, storageBucketArn, fileEventsTopicArn, dbSecretArn } = props;
@@ -21,7 +24,6 @@ export function createFileServiceIAM(scope: Construct, props: FileServiceIAMProp
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
   });
 
-  // Policy: S3 Storage Bucket — full quyền trên bucket uploads
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'S3Storage',
@@ -39,29 +41,20 @@ export function createFileServiceIAM(scope: Construct, props: FileServiceIAMProp
     })
   );
 
-  // Policy: SNS Publish — file-events topic
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SNSPublish',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'sns:Publish',
-        'sns:CreateTopic',
-        'sns:GetTopicAttributes',
-      ],
+      actions: ['sns:Publish', 'sns:CreateTopic', 'sns:GetTopicAttributes'],
       resources: [fileEventsTopicArn],
     })
   );
 
-  // Policy: Secrets Manager — chỉ đọc DB credentials
   taskRole.addToPolicy(
     new iam.PolicyStatement({
       sid: 'SecretsManagerRead',
       effect: iam.Effect.ALLOW,
-      actions: [
-        'secretsmanager:GetSecretValue',
-        'secretsmanager:DescribeSecret',
-      ],
+      actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
       resources: [dbSecretArn],
     })
   );
@@ -70,9 +63,9 @@ export function createFileServiceIAM(scope: Construct, props: FileServiceIAMProp
 }
 
 /**
- * File Service Execution Role (pull image + write logs)
+ * File Service Execution Role — Permissions: pull image + write logs
  */
-export function createFileServiceExecutionRole(scope: Construct, props: FileServiceIAMProps): iam.Role {
+export function createFileServiceExecutionRole(scope: Construct, props: FileServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'FileServiceExecutionRole', {

@@ -1,18 +1,18 @@
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
 
 spring:
   application:
     name: mail-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/mail_db
-    username: ${DB_USER:admin}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:mail_db}
+    username: ${DB_USERNAME:admin}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -27,19 +27,16 @@ management:
     health:
       show-details: always
 
-# AWS Simulation (LocalStack)
 aws:
-  region: ${AWS_REGION:ap-northeast-1}
+  region: ${AWS_REGION:ap-southeast-1}
   ses:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    from-email: no-reply@demo.com
+    from-email: ${AWS_SES_FROM_EMAIL:no-reply@demo.com}
   sqs:
-    endpoint: ${LOCALSTACK_URL:http://localhost:4566}
-    mail-queue-url: http://localhost:4566/000000000000/mail-queue
+    mail-queue-url: ${AWS_SQS_MAIL_QUEUE_URL:http://localhost:4566/000000000000/mail-queue}
 
 logging:
   level:
     root: INFO
-    com.demo.mail: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    com.demo.mail: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: OFF

@@ -14,6 +14,9 @@ export interface RdsStackProps extends cdk.StackProps {
 export class RdsStack extends cdk.Stack {
   public readonly dbInstance: rds.IDatabaseInstance;
   public readonly dbSecret: secretsmanager.ISecret;
+  public readonly dbEndpointAddress: string;
+  public readonly dbPort: string;
+  public readonly dbName: string;
 
   constructor(scope: Construct, id: string, props: RdsStackProps) {
     super(scope, id, props);
@@ -46,7 +49,6 @@ export class RdsStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
-      // T012: Map rdsSg to allow inbound from ecsSg (rdsSg rule already in VpcStack)
       securityGroups: [rdsSg],
       credentials: rds.Credentials.fromSecret(this.dbSecret),
       databaseName: 'awsmicrodemo',
@@ -58,6 +60,10 @@ export class RdsStack extends cdk.Stack {
       allocatedStorage: 20,
       instanceIdentifier: `aws-micro-demo-db-${envName}`,
     });
+
+    this.dbEndpointAddress = this.dbInstance.dbInstanceEndpointAddress;
+    this.dbPort = this.dbInstance.dbInstanceEndpointPort;
+    this.dbName = 'awsmicrodemo';
 
     // Outputs
     new cdk.CfnOutput(this, 'RdsEndpoint', {

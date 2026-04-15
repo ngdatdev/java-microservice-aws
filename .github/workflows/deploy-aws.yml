@@ -2,147 +2,296 @@ name: AWS CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
   workflow_dispatch:
 
 env:
-  AWS_REGION: ap-northeast-1
+  AWS_REGION: ap-southeast-1
   CDK_CONTEXT: env=dev
 
 jobs:
   # =========================================================
-  # JOB 1: VERIFY CODE & INFRASTRUCTURE
+  # JOB 1: VERIFY — Build code + CDK synth
   # =========================================================
-  verify_code:
-    name: Verify Code & Synth
+  verify:
+    name: Verify Code & Synthesize
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
+      # ── Build Java microservices ──────────────────────────
       - name: ☕ Setup Java 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
 
-      - name: 🔨 Build Microservices
+      - name: 🏗️ Build all Java services
         run: |
-          services=("member-service" "file-service" "mail-service" "auth-service" "master-service")
-          for svc in "${services[@]}"; do
+          for svc in member-service file-service mail-service auth-service master-service; do
             echo "==== Building $svc ===="
-            cd services/$svc
-            mvn clean package -DskipTests
-            cd ../..
+            ./mvnw -f services/$svc/pom.xml clean package -DskipTests
           done
 
+      # ── CDK synth ────────────────────────────────────────
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: |
-            ./frontend/package-lock.json
-            ./infra/package-lock.json
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ./infra/package-lock.json
 
-      - name: 🏗️ Build Frontend
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: 🔍 CDK Synthesis Validation
+      - name: 🔍 CDK Synthesize (validation only)
         working-directory: ./infra
-        run: |
-          npm ci
-          npx cdk synth --context ${{ env.CDK_CONTEXT }}
+        run: npx cdk synth --context ${{ env.CDK_CONTEXT }}
 
   # =========================================================
-  # JOB 2: DOCKER BUILD & PUSH LÊN ECR
+  # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
   # =========================================================
-  build_and_push_to_ecr:
-    name: Docker Push to Amazon ECR
-    needs: verify_code
+  build_push_ecr:
+    name: Build & Push Docker Images to ECR
+    needs: verify
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: ☕ Setup Java 17 & Build
-        uses: actions/setup-java@v3
+      # ── Build Java ───────────────────────────────────────
+      - name: ☕ Setup Java 17
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
-      - run: |
-          for svc in "member-service" "file-service" "mail-service" "auth-service" "master-service"; do
-            cd services/$svc && mvn clean package -DskipTests && cd ../..
+
+      - name: 🏗️ Build Java services
+        run: |
+          for svc in member-service file-service mail-service auth-service master-service; do
+            ./mvnw -f services/$svc/pom.xml clean package -DskipTests
           done
 
-      - name: 🔐 Configure AWS credentials
+      # ── AWS credentials (OIDC — no long-lived keys) ──────
+      - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 🐳 Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 🚀 Build, tag, and push images to ECR
+      - name: 🚀 Build, tag, and push Docker images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          services=("member-service" "file-service" "mail-service" "auth-service" "master-service")
-          for svc in "${services[@]}"; do
-            echo "==== Pushing Docker image for $svc ===="
-            cd services/$svc
+          for svc in member-service file-service mail-service auth-service master-service; do
+            echo "==== Docker: $svc ===="
             REPO_NAME="aws-micro-demo/$svc"
-            docker build -t $ECR_REGISTRY/$REPO_NAME:latest -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG .
+
+            docker build \
+              --build-arg SERVICE_NAME=$svc \
+              -t $ECR_REGISTRY/$REPO_NAME:latest \
+              -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG \
+              services/$svc
+
             docker push $ECR_REGISTRY/$REPO_NAME:latest
             docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
-            cd ../..
           done
 
   # =========================================================
-  # JOB 3: DEPLOY HẠ TẦNG (CDK)
+  # JOB 3: DEPLOY INFRASTRUCTURE (CDK) → AWS
   # =========================================================
   deploy_infrastructure:
-    name: Deploy AWS Infrastructure
-    needs: build_and_push_to_ecr
+    name: Deploy AWS Infrastructure (CDK)
+    needs: build_push_ecr
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: './infra/package-lock.json'
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ./infra/package-lock.json
+
+      - name: 🔐 Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: 📦 Install CDK dependencies
         working-directory: ./infra
         run: |
           npm ci
-          npm install -g aws-cdk
+          npm install -g aws-cdk@latest
 
-      - name: 🚀 Deploy Stacks via CDK
+      - name: 🔄 CDK Bootstrap (1 lần — bỏ qua nếu đã bootstrap)
         working-directory: ./infra
         run: |
-          cdk deploy --all --require-approval never --context ${{ env.CDK_CONTEXT }}
+          npx cdk bootstrap \
+            aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} \
+            --force 2>/dev/null || true
+
+      - name: 🚀 Deploy all CDK stacks
+        working-directory: ./infra
+        env:
+          DB_HOST: $(aws cloudformation describe-stacks \
+            --stack-name RdsStack-${{ env.CDK_CONTEXT }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`RdsEndpoint`].OutputValue' \
+            --output text 2>/dev/null || echo "localhost")
+        run: |
+          npx cdk deploy --all \
+            --require-approval never \
+            --context ${{ env.CDK_CONTEXT }}
+
+  # =========================================================
+  # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
+  # CDK skips EcsStack when infra code unchanged; ECS service
+  # won't know about new :latest image unless forced.
+  # =========================================================
+  deploy_ecs:
+    name: Force ECS Redeploy (new Docker images)
+    needs: deploy_infrastructure
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔄 Force ECS services to pull new images
+        run: |
+          CLUSTER="aws-micro-demo-${{ env.CDK_CONTEXT }}"
+          for svc in auth-service member-service file-service mail-service master-service; do
+            echo "==== Force redeploying $svc ===="
+            aws ecs update-service \
+              --cluster $CLUSTER \
+              --service ${svc}-${{ env.CDK_CONTEXT }} \
+              --force-new-deployment \
+              --output text \
+              --query 'service.serviceName'
+          done
+
+      - name: ⏳ Wait for ECS services to stabilize
+        run: |
+          CLUSTER="aws-micro-demo-${{ env.CDK_CONTEXT }}"
+          for svc in auth-service member-service file-service mail-service master-service; do
+            echo "==== Waiting for $svc to stabilize ===="
+            aws ecs wait services-stable \
+              --cluster $CLUSTER \
+              --services ${svc}-${{ env.CDK_CONTEXT }}
+            echo "==== $svc is stable ===="
+          done
+
+  # =========================================================
+  # JOB 5: DEPLOY FRONTEND → S3 + INVALIDATE CLOUDFRONT
+  # =========================================================
+  deploy_frontend:
+    name: Deploy Frontend to S3
+    needs: deploy_ecs
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: 🔐 Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Get CloudFront domain from CDK outputs ──────────────
+      - name: 📡 Get CloudFront domain
+        id: cloudfront-domain
+        run: |
+          CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
+            --output text)
+          echo "domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_OUTPUT
+
+      # ── Build Frontend ────────────────────────────────────
+      - name: 🏗️ Build Next.js frontend
+        working-directory: ./frontend
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_API_URL: https://${{ steps.cloudfront-domain.outputs.domain }}
+          NEXT_PUBLIC_AUTH_SERVICE_URL: https://${{ steps.cloudfront-domain.outputs.domain }}/api/v1/auth
+          NEXT_PUBLIC_MEMBER_SERVICE_URL: https://${{ steps.cloudfront-domain.outputs.domain }}/api/v1/members
+          NEXT_PUBLIC_FILE_SERVICE_URL: https://${{ steps.cloudfront-domain.outputs.domain }}/api/v1/files
+          NEXT_PUBLIC_MAIL_SERVICE_URL: https://${{ steps.cloudfront-domain.outputs.domain }}/api/v1/mails
+          NEXT_PUBLIC_MASTER_SERVICE_URL: https://${{ steps.cloudfront-domain.outputs.domain }}/api/v1/master
+        run: |
+          npm ci
+          npm run build
+
+      # ── Upload to S3 ──────────────────────────────────────
+      - name: 📦 Upload frontend to S3
+        run: |
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+            --output text)
+
+          aws s3 sync \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            frontend/.next/static/ \
+            s3://$FRONTEND_BUCKET/_next/static/
+
+          aws s3 sync \
+            --delete \
+            --cache-control "public,max-age=0,must-revalidate" \
+            --exclude "*.map" \
+            --exclude "_next/static/*" \
+            frontend/.next/ \
+            s3://$FRONTEND_BUCKET/
+
+      # ── Invalidate CloudFront ──────────────────────────────
+      - name: 🔄 Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+            --output text)
+
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
