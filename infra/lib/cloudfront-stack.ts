@@ -28,6 +28,16 @@ export class CloudFrontStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // CloudFront access logs S3 bucket
+    const accessLogsBucket = new s3.Bucket(this, 'AccessLogsBucket', {
+      bucketName: `aws-micro-demo-cf-logs-${envName}-${this.account}`,
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
     // T021: T022: Cache policy for static assets (aggressive caching)
     const staticAssetsCachePolicy = new cloudfront.CachePolicy(this, 'StaticAssetsCachePolicy', {
       cachePolicyName: `aws-micro-demo-static-cache-${envName}`,
@@ -65,6 +75,8 @@ export class CloudFrontStack extends cdk.Stack {
     this.distribution = new cloudfront.Distribution(this, 'DemoDistribution', {
       comment: `aws-micro-demo CloudFront distribution (${envName})`,
       defaultRootObject: 'index.html',
+      logBucket: accessLogsBucket,
+      logFilePrefix: `cloudfront-logs/`,
       defaultBehavior: {
         // Frontend static assets via S3 OAC
         origin: origins.S3BucketOrigin.withOriginAccessControl(
@@ -123,6 +135,12 @@ export class CloudFrontStack extends cdk.Stack {
       value: this.distribution.distributionId,
       description: 'CloudFront distribution ID',
       exportName: `${envName}-CloudFrontDistributionId`,
+    });
+
+    new cdk.CfnOutput(this, 'AccessLogsBucketName', {
+      value: accessLogsBucket.bucketName,
+      description: 'S3 bucket for CloudFront access logs',
+      exportName: `${envName}-AccessLogsBucketName`,
     });
   }
 }

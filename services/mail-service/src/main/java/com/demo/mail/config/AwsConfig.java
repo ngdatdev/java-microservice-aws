@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import java.net.URI;
 
@@ -18,21 +17,8 @@ public class AwsConfig {
     /**
      * Local endpoint (LocalStack). Empty = use real AWS.
      */
-    @Value("${aws.ses.endpoint:}")
-    private String sesEndpoint;
-
     @Value("${aws.sqs.endpoint:}")
     private String sqsEndpoint;
-
-    @Bean
-    public SesClient sesClient() {
-        var builder = SesClient.builder().region(Region.of(region));
-        if (!sesEndpoint.isBlank()) {
-            builder.endpointOverride(URI.create(sesEndpoint));
-        }
-        builder.credentialsProvider(DefaultCredentialsProvider.create());
-        return builder.build();
-    }
 
     @Bean
     public SqsClient sqsClient() {

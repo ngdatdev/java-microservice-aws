@@ -2,7 +2,7 @@ package com.demo.mail.controller;
 
 import com.demo.mail.entity.EmailLog;
 import com.demo.mail.repository.EmailLogRepository;
-import com.demo.mail.service.SesEmailSender;
+import com.demo.mail.service.EmailSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MailController {
 
-    private final SesEmailSender emailSender;
+    private final EmailSender emailSender;
     private final EmailLogRepository repository;
 
     @PostMapping("/send")
@@ -23,9 +23,9 @@ public class MailController {
         String to = request.get("to");
         String subject = request.get("subject");
         String body = request.get("body");
-        
+
         emailSender.sendEmail(to, subject, body);
-        return ResponseEntity.ok("Email processing initiated");
+        return ResponseEntity.ok("Email sent (mock)");
     }
 
     @GetMapping("/logs")

@@ -12,7 +12,7 @@ export interface MailServiceExecutionRoleProps {
 }
 
 /**
- * Mail Service Task Role — Permissions: SQS Receive (mail queue) + SES Send (email) + SNS (notifications)
+ * Mail Service Task Role — Permissions: SQS (mail queue) + SNS (notifications)
  */
 export function createMailServiceIAM(scope: Construct, props: MailServiceIAMProps): iam.Role {
   const { envName, mailQueueArn, notificationsTopicArn } = props;
@@ -29,16 +29,6 @@ export function createMailServiceIAM(scope: Construct, props: MailServiceIAMProp
       effect: iam.Effect.ALLOW,
       actions: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueUrl', 'sqs:GetQueueAttributes', 'sqs:ListQueues'],
       resources: [mailQueueArn],
-    })
-  );
-
-  // SES permissions — restrict to verified identity in production
-  taskRole.addToPolicy(
-    new iam.PolicyStatement({
-      sid: 'SESSendEmail',
-      effect: iam.Effect.ALLOW,
-      actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail', 'ses:DescribeEmailIdentity', 'ses:ListIdentities'],
-      resources: ['*'],
     })
   );
 

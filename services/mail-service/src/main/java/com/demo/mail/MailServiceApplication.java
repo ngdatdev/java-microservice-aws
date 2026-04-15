@@ -29,9 +29,8 @@ public class MailServiceApplication {
             String port       = env.getProperty("server.port", "8083");
             String appName   = env.getProperty("spring.application.name", "mail-service");
             String baseUrl   = "http://localhost:" + port;
-            String region     = env.getProperty("aws.region", "not set");
-            String fromEmail = env.getProperty("aws.ses.from-email", "not set");
-            String sqsQueue  = env.getProperty("aws.sqs.mail-queue-url", "not set");
+            String region    = env.getProperty("aws.region", "not set");
+            String sqsQueue  = env.getProperty("AWS_SQS_MAIL_QUEUE_URL", "not configured");
 
             System.out.println();
             System.out.println("╔════════════════════════════════════════════════════════╗");
@@ -42,8 +41,8 @@ public class MailServiceApplication {
             System.out.printf("║  Health       : %-37s║%n", baseUrl + "/actuator/health");
             System.out.println("╠════════════════════════════════════════════════════════╣");
             System.out.printf("║  AWS Region   : %-37s║%n", region);
-            System.out.printf("║  SES From     : %-37s║%n", fromEmail);
             System.out.printf("║  SQS Queue    : %-37s║%n", sqsQueue);
+            System.out.printf("║  Email Mode   : %-37s║%n", "MOCK (logs only)");
             System.out.println("╚════════════════════════════════════════════════════════╝");
             System.out.println();
         };

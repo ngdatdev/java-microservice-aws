@@ -178,7 +178,6 @@ export class EcsStack extends cdk.Stack {
         DB_HOST: dbHost,
         DB_NAME: 'mail_db',
         AWS_REGION: awsRegion,
-        AWS_SES_FROM_EMAIL: `no-reply@demo.com`,
         AWS_SQS_MAIL_QUEUE_URL: mailQueueUrl,
       },
       'master-service': {

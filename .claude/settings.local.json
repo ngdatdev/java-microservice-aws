@@ -10,7 +10,10 @@
       "Bash(where.exe java:*)",
       "Read(//c/Program Files/Java/**)",
       "Read(//c/Program Files/**)",
-      "Bash(java -version)"
+      "Bash(java -version)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('next:',p.dependencies.next\\)\")",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(node --input-type=module -e \"import{readFileSync}from'fs';console.log\\(readFileSync\\('package.json','utf8'\\)\\)\")"
     ]
   }
 }

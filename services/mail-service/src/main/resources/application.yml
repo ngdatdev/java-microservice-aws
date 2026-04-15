@@ -1,7 +1,5 @@
 # ============================================================
 # Base — Always loaded.
-# Defaults for all environments.
-# Sensitive/environment-specific values come from env vars.
 # ============================================================
 
 spring:
@@ -26,13 +24,6 @@ spring:
 
 server:
   port: ${SERVER_PORT:8083}
-
-aws:
-  region: ${AWS_REGION:ap-southeast-1}
-  ses:
-    from-email: ${AWS_SES_FROM_EMAIL}
-  sqs:
-    mail-queue-url: ${AWS_SQS_MAIL_QUEUE_URL}
 
 management:
   endpoints:

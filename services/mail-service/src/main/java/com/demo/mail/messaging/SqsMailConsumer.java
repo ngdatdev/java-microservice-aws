@@ -1,6 +1,6 @@
 package com.demo.mail.messaging;
 
-import com.demo.mail.service.SesEmailSender;
+import com.demo.mail.service.EmailSender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,14 +20,19 @@ import java.util.Map;
 public class SqsMailConsumer {
 
     private final SqsClient sqsClient;
-    private final SesEmailSender emailSender;
+    private final EmailSender emailSender;
     private final ObjectMapper objectMapper;
 
-    @Value("${aws.sqs.mail-queue-url:http://localhost:4566/000000000000/mail-queue}")
+    @Value("${AWS_SQS_MAIL_QUEUE_URL:}")
     private String queueUrl;
 
     @Scheduled(fixedDelay = 5000)
     public void consumeMessages() {
+        if (queueUrl == null || queueUrl.isBlank()) {
+            log.debug("SQS queue URL not configured, skipping consumer");
+            return;
+        }
+
         try {
             ReceiveMessageRequest receiveRequest = ReceiveMessageRequest.builder()
                     .queueUrl(queueUrl)
@@ -39,7 +44,7 @@ public class SqsMailConsumer {
 
             for (Message message : messages) {
                 processMessage(message);
-                
+
                 sqsClient.deleteMessage(DeleteMessageRequest.builder()
                         .queueUrl(queueUrl)
                         .receiptHandle(message.receiptHandle())
@@ -54,11 +59,11 @@ public class SqsMailConsumer {
         try {
             log.info("Processing mail message: {}", message.messageId());
             Map<String, Object> payload = objectMapper.readValue(message.body(), Map.class);
-            
+
             String to = (String) payload.get("to");
             String subject = (String) payload.get("subject");
             String body = (String) payload.get("body");
-            
+
             if (to != null && subject != null && body != null) {
                 emailSender.sendEmail(to, subject, body);
             } else {
