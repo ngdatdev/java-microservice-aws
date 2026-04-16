@@ -133,27 +133,40 @@ jobs:
           elif [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Comparing against base branch: origin/${{ github.base_ref }}"
             BACKEND_CHANGED=false
-            for svc in auth-service member-service file-service mail-service master-service; do
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/$svc/"; then
-                echo "✓ $svc changed"
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/"; then
                 BACKEND_CHANGED=true
               fi
-            done
-            echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/.ci-trigger"; then
+                BACKEND_CHANGED=true
+              fi
+              if [ "$BACKEND_CHANGED" == "true" ]; then
+                echo "✓ Backend changed (services or .ci-trigger)"
+              fi
+              echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
 
-            INFRA_CHANGED=false
-            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|\\.github/)"; then
-              echo "✓ Infrastructure or CI config changed"
-              INFRA_CHANGED=true
-            fi
-            echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
+              INFRA_CHANGED=false
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|\\.github/)"; then
+                INFRA_CHANGED=true
+              fi
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^infra/.ci-trigger"; then
+                INFRA_CHANGED=true
+              fi
+              if [ "$INFRA_CHANGED" == "true" ]; then
+                echo "✓ Infrastructure or CI config changed"
+              fi
+              echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
 
-            FRONTEND_CHANGED=false
-            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/"; then
-              echo "✓ Frontend changed"
-              FRONTEND_CHANGED=true
-            fi
-            echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
+              FRONTEND_CHANGED=false
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/"; then
+                FRONTEND_CHANGED=true
+              fi
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/.ci-trigger"; then
+                FRONTEND_CHANGED=true
+              fi
+              if [ "$FRONTEND_CHANGED" == "true" ]; then
+                echo "✓ Frontend changed (frontend or .ci-trigger)"
+              fi
+              echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
           else
             # Push — check if this is the FIRST push ever (no previous commit)
             if [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
@@ -164,25 +177,38 @@ jobs:
             else
               echo "Comparing against previous commit: ${{ github.event.before }}"
               BACKEND_CHANGED=false
-              for svc in auth-service member-service file-service mail-service master-service; do
-                if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/$svc/"; then
-                  echo "✓ $svc changed"
-                  BACKEND_CHANGED=true
-                fi
-              done
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/"; then
+                BACKEND_CHANGED=true
+              fi
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/.ci-trigger"; then
+                BACKEND_CHANGED=true
+              fi
+              if [ "$BACKEND_CHANGED" == "true" ]; then
+                echo "✓ Backend changed (services or .ci-trigger)"
+              fi
               echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
 
               INFRA_CHANGED=false
               if git diff --name-only ${{ github.event.before }} HEAD | grep -qE "^(infra/|\\.github/)"; then
-                echo "✓ Infrastructure or CI config changed"
                 INFRA_CHANGED=true
+              fi
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^infra/.ci-trigger"; then
+                INFRA_CHANGED=true
+              fi
+              if [ "$INFRA_CHANGED" == "true" ]; then
+                echo "✓ Infrastructure or CI config changed"
               fi
               echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
 
               FRONTEND_CHANGED=false
               if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^frontend/"; then
-                echo "✓ Frontend changed"
                 FRONTEND_CHANGED=true
+              fi
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^frontend/.ci-trigger"; then
+                FRONTEND_CHANGED=true
+              fi
+              if [ "$FRONTEND_CHANGED" == "true" ]; then
+                echo "✓ Frontend changed (frontend or .ci-trigger)"
               fi
               echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
             fi
