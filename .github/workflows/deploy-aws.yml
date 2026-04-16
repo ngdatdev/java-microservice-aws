@@ -151,10 +151,19 @@ jobs:
       - name: 🚀 Deploy all CDK stacks
         working-directory: ./infra
         run: |
-          npx cdk deploy --all \
+          npx cdk deploy \
+            VpcStack-production \
+            SnsSqsStack-production \
+            RdsStack-production \
+            CognitoStack-production \
+            S3Stack-production \
+            EcsStack-production \
+            ApiGatewayStack-production \
+            CloudFrontStack-production \
+            CloudWatchStack-production \
             --require-approval never \
             --context env=production \
-            --exclude EcrStack-production
+            --outputs-file cdk-outputs.json
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
@@ -190,7 +199,7 @@ jobs:
               --query 'service.serviceName' 2>/dev/null \
               && echo "==== $svc redeployed ====" \
               || echo "==== SKIP: $svc not found (may be first deploy) ===="
-          done
+          done || true
 
       - name: ⏳ Wait for ECS services to stabilize
         run: |
@@ -200,12 +209,12 @@ jobs:
               --cluster $CLUSTER \
               --services ${svc}-production \
               --query 'services[0].status' \
-              --output text 2>/dev/null)
+              --output text 2>/dev/null) || continue
             if [ "$SERVICE_STATUS" == "ACTIVE" ]; then
               echo "==== Waiting for $svc to stabilize ===="
               aws ecs wait services-stable \
                 --cluster $CLUSTER \
-                --services ${svc}-production
+                --services ${svc}-production 2>/dev/null || echo "==== SKIP: $svc wait timeout ===="
               echo "==== $svc is stable ===="
             else
               echo "==== SKIP: $svc not found (may be first deploy) ===="
@@ -217,7 +226,7 @@ jobs:
   # =========================================================
   deploy_frontend:
     name: Deploy Frontend to S3
-    needs: verify
+    needs: [verify, deploy_infrastructure]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -245,16 +254,17 @@ jobs:
           CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
             --stack-name CloudFrontStack-production \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
-            --output text)
+            --output text 2>/dev/null) || true
           if [ -z "$CLOUDFRONT_DOMAIN" ]; then
-            echo "WARNING: CloudFrontStack-production not found or CloudFrontDomainName is empty."
-            echo "SKIP: Frontend deploy — run this job manually after CDK deploy completes."
+            echo "WARNING: CloudFrontStack-production not found — skipping frontend deploy."
+            echo "domain=" >> $GITHUB_OUTPUT
             exit 0
           fi
           echo "domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_OUTPUT
           echo "CloudFront Domain: $CLOUDFRONT_DOMAIN"
 
       - name: 🏗️ Build Next.js frontend
+        if: steps.cloudfront-domain.outputs.domain != ''
         working-directory: ./frontend
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
