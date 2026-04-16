@@ -32,9 +32,11 @@ jobs:
 
       - name: 🏗️ Build all Java services
         run: |
+          chmod +x services/*/mvnw
           for svc in member-service file-service mail-service auth-service master-service; do
             echo "==== Building $svc ===="
             cd services/$svc && ./mvnw clean package -DskipTests
+            cd ../..
           done
 
       # ── CDK synth ────────────────────────────────────────
@@ -176,18 +178,29 @@ jobs:
               --service ${svc}-${{ env.CDK_CONTEXT }} \
               --force-new-deployment \
               --output text \
-              --query 'service.serviceName'
+              --query 'service.serviceName' 2>/dev/null \
+              && echo "==== $svc redeployed ====" \
+              || echo "==== SKIP: $svc not found (may be first deploy) ===="
           done
 
       - name: ⏳ Wait for ECS services to stabilize
         run: |
           CLUSTER="aws-micro-demo-${{ env.CDK_CONTEXT }}"
           for svc in auth-service member-service file-service mail-service master-service; do
-            echo "==== Waiting for $svc to stabilize ===="
-            aws ecs wait services-stable \
+            SERVICE_STATUS=$(aws ecs describe-services \
               --cluster $CLUSTER \
-              --services ${svc}-${{ env.CDK_CONTEXT }}
-            echo "==== $svc is stable ===="
+              --services ${svc}-${{ env.CDK_CONTEXT }} \
+              --query 'services[0].status' \
+              --output text 2>/dev/null)
+            if [ "$SERVICE_STATUS" == "ACTIVE" ]; then
+              echo "==== Waiting for $svc to stabilize ===="
+              aws ecs wait services-stable \
+                --cluster $CLUSTER \
+                --services ${svc}-${{ env.CDK_CONTEXT }}
+              echo "==== $svc is stable ===="
+            else
+              echo "==== SKIP: $svc not found (may be first deploy) ===="
+            fi
           done
 
   # =========================================================
@@ -226,7 +239,13 @@ jobs:
             --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
             --output text)
+          if [ -z "$CLOUDFRONT_DOMAIN" ]; then
+            echo "ERROR: CloudFrontStack-${{ env.CDK_CONTEXT }} not found or CloudFrontDomainName output is empty"
+            echo "This is expected on first deployment. Run pipeline again after CDK deploy completes."
+            exit 1
+          fi
           echo "domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_OUTPUT
+          echo "CloudFront Domain: $CLOUDFRONT_DOMAIN"
 
       # ── Build Frontend ────────────────────────────────────
       - name: 🏗️ Build Next.js frontend
