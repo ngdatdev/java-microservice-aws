@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for git diff against base branch in PR
 
       # ── Build Java microservices ──────────────────────────
       - name: ☕ Setup Java 17
@@ -64,13 +66,80 @@ jobs:
         working-directory: ./infra
         run: npx cdk synth --context env=production
 
+      # ── Detect what changed → set outputs for conditional jobs ──
+      - name: 📡 Detect changed paths
+        id: changes
+        run: |
+          echo "=== Detecting changed files ==="
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Before: ${{ github.event.before }}"
+          echo "Base ref: ${{ github.base_ref }}"
+
+          # Push → compare against the commit before this push
+          # PR → compare against base branch (origin/main)
+          # workflow_dispatch → build everything
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger — building everything"
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
+            echo "infra_changed=true" >> $GITHUB_OUTPUT
+            echo "frontend_changed=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Comparing against base branch: origin/${{ github.base_ref }}"
+            BACKEND_CHANGED=false
+            for svc in auth-service member-service file-service mail-service master-service; do
+              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/$svc/"; then
+                echo "✓ $svc changed"
+                BACKEND_CHANGED=true
+              fi
+            done
+            echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
+
+            INFRA_CHANGED=false
+            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|\\.github/)"; then
+              echo "✓ Infrastructure or CI config changed"
+              INFRA_CHANGED=true
+            fi
+            echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
+
+            FRONTEND_CHANGED=false
+            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/"; then
+              echo "✓ Frontend changed"
+              FRONTEND_CHANGED=true
+            fi
+            echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
+          else
+            echo "Comparing against previous commit: ${{ github.event.before }}"
+            BACKEND_CHANGED=false
+            for svc in auth-service member-service file-service mail-service master-service; do
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/$svc/"; then
+                echo "✓ $svc changed"
+                BACKEND_CHANGED=true
+              fi
+            done
+            echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
+
+            INFRA_CHANGED=false
+            if git diff --name-only ${{ github.event.before }} HEAD | grep -qE "^(infra/|\\.github/)"; then
+              echo "✓ Infrastructure or CI config changed"
+              INFRA_CHANGED=true
+            fi
+            echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
+
+            FRONTEND_CHANGED=false
+            if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^frontend/"; then
+              echo "✓ Frontend changed"
+              FRONTEND_CHANGED=true
+            fi
+            echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
+          fi
+
   # =========================================================
   # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
   # =========================================================
   build_push_ecr:
     name: Build & Push Docker Images to ECR
     needs: verify
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.verify.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -114,8 +183,8 @@ jobs:
   # =========================================================
   deploy_infrastructure:
     name: Deploy AWS Infrastructure (CDK)
-    needs: build_push_ecr
-    if: github.ref == 'refs/heads/main'
+    needs: verify
+    if: github.ref == 'refs/heads/main' && needs.verify.outputs.infra_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -154,7 +223,8 @@ jobs:
         run: |
           npx cdk deploy --all \
             --require-approval never \
-            --context env=production
+            --context env=production \
+            --exclude EcrStack-production
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
@@ -163,8 +233,8 @@ jobs:
   # =========================================================
   deploy_ecs:
     name: Force ECS Redeploy (new Docker images)
-    needs: deploy_infrastructure
-    if: github.ref == 'refs/heads/main'
+    needs: verify
+    if: github.ref == 'refs/heads/main' && (needs.verify.outputs.infra_changed == 'true' || needs.verify.outputs.backend_changed == 'true')
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -220,8 +290,8 @@ jobs:
   # =========================================================
   deploy_frontend:
     name: Deploy Frontend to S3
-    needs: deploy_ecs
-    if: github.ref == 'refs/heads/main'
+    needs: verify
+    if: github.ref == 'refs/heads/main' && needs.verify.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
