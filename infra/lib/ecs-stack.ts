@@ -44,7 +44,8 @@ export interface EcsStackProps extends cdk.StackProps {
   notificationsTopicArn: string;
   mailQueueArn: string;
   mailQueueUrl: string;
-  auditQueueArn: string;
+  memberEventQueueUrl: string;
+  memberEventQueueArn: string;
   // S3
   storageBucketArn: string;
   storageBucketName: string;
@@ -71,7 +72,7 @@ export class EcsStack extends cdk.Stack {
     const { envName, vpc, ecsSg, nlbSg, repositories, dbSecret,
             dbHost, userPoolArn, cognitoUserPoolId, cognitoClientId,
             memberEventsTopicArn, fileEventsTopicArn, notificationsTopicArn,
-            mailQueueArn, mailQueueUrl, auditQueueArn,
+            mailQueueArn, mailQueueUrl, memberEventQueueUrl, memberEventQueueArn,
             storageBucketArn, storageBucketName, awsRegion } = props;
 
     // ─── JWT Secret (managed by CDK, injected as ECS secret) ───────────────────
@@ -116,7 +117,7 @@ export class EcsStack extends cdk.Stack {
 
     // Member Service IAM
     const memberTaskRole = createMemberServiceIAM(this, {
-      envName, memberEventsTopicArn, auditQueueArn, dbSecretArn: dbSecret.secretArn,
+      envName, memberEventsTopicArn, memberEventQueueArn, dbSecretArn: dbSecret.secretArn,
     });
     const memberExecutionRole = createMemberServiceExecutionRole(this, { envName });
 
@@ -157,15 +158,15 @@ export class EcsStack extends cdk.Stack {
         DB_HOST: dbHost,
         DB_NAME: 'auth_db',
         AWS_REGION: awsRegion,
-        COGNITO_USER_POOL_ID: cognitoUserPoolId,
-        COGNITO_CLIENT_ID: cognitoClientId,
+        AWS_COGNITO_USER_POOL_ID: cognitoUserPoolId,
+        AWS_COGNITO_CLIENT_ID: cognitoClientId,
       },
       'member-service': {
         DB_HOST: dbHost,
         DB_NAME: 'member_db',
         AWS_REGION: awsRegion,
         AWS_SNS_MEMBER_EVENTS_TOPIC_ARN: memberEventsTopicArn,
-        AWS_SQS_AUDIT_QUEUE_URL: auditQueueArn.replace(':/', '://').replace('/arn:', '/').replace(/\/.*/, '') + '/audit-queue-url-placeholder',
+        AWS_SQS_AUDIT_QUEUE_URL: memberEventQueueUrl,
       },
       'file-service': {
         DB_HOST: dbHost,

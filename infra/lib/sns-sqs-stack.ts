@@ -130,4 +130,8 @@ export class SnsSqsStack extends cdk.Stack {
       exportName: `${env}-MemberEventQueueUrl`,
     });
   }
+
+  public get memberEventQueueUrl(): string {
+    return this.memberEventQueue.queueUrl;
+  }
 }

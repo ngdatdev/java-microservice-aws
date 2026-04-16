@@ -4,7 +4,7 @@ import { Construct } from 'constructs';
 export interface MemberServiceIAMProps {
   envName: string;
   memberEventsTopicArn: string;
-  auditQueueArn: string;
+  memberEventQueueArn: string;
   dbSecretArn: string;
 }
 
@@ -16,7 +16,7 @@ export interface MemberServiceExecutionRoleProps {
  * Member Service Task Role — Permissions: SNS Publish (member events) + SQS Send (audit) + Secrets Manager
  */
 export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAMProps): iam.Role {
-  const { envName, memberEventsTopicArn, auditQueueArn, dbSecretArn } = props;
+  const { envName, memberEventsTopicArn, memberEventQueueArn, dbSecretArn } = props;
 
   const taskRole = new iam.Role(scope, 'MemberServiceTaskRole', {
     roleName: `member-service-task-role-${envName}`,
@@ -38,7 +38,7 @@ export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAM
       sid: 'SQSAudit',
       effect: iam.Effect.ALLOW,
       actions: ['sqs:SendMessage', 'sqs:SendMessageBatch', 'sqs:GetQueueUrl', 'sqs:GetQueueAttributes'],
-      resources: [auditQueueArn],
+      resources: [memberEventQueueArn],
     })
   );
 

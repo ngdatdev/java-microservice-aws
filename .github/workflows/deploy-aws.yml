@@ -9,7 +9,7 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  CDK_CONTEXT: env=dev
+  CDK_CONTEXT: env=production
 
 jobs:
   # =========================================================
@@ -34,7 +34,7 @@ jobs:
         run: |
           for svc in member-service file-service mail-service auth-service master-service; do
             echo "==== Building $svc ===="
-            ./mvnw clean package -DskipTests
+            cd services/$svc && ./mvnw clean package -DskipTests
           done
 
       # ── CDK synth ────────────────────────────────────────
@@ -60,23 +60,15 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    strategy:
+      matrix:
+        service: [auth-service, member-service, file-service, mail-service, master-service]
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # ── Build Java ───────────────────────────────────────
-      - name: ☕ Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: 🏗️ Build Java services
-        run: |
-          for svc in member-service file-service mail-service auth-service master-service; do
-            ./mvnw clean package -DskipTests
-          done
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       # ── AWS credentials (OIDC — no long-lived keys) ──────
       - name: 🔐 Configure AWS credentials (OIDC)
@@ -88,24 +80,18 @@ jobs:
       - name: 🐳 Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 🚀 Build, tag, and push Docker images
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          for svc in member-service file-service mail-service auth-service master-service; do
-            echo "==== Docker: $svc ===="
-            REPO_NAME="aws-micro-demo/$svc"
-
-            docker build \
-              --build-arg SERVICE_NAME=$svc \
-              -t $ECR_REGISTRY/$REPO_NAME:latest \
-              -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG \
-              services/$svc
-
-            docker push $ECR_REGISTRY/$REPO_NAME:latest
-            docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
-          done
+      - name: 🚀 Build & Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/aws-micro-demo/${{ matrix.service }}:latest
+            ${{ env.ECR_REGISTRY }}/aws-micro-demo/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   # =========================================================
   # JOB 3: DEPLOY INFRASTRUCTURE (CDK) → AWS
@@ -151,11 +137,6 @@ jobs:
 
       - name: 🚀 Deploy all CDK stacks
         working-directory: ./infra
-        env:
-          DB_HOST: $(aws cloudformation describe-stacks \
-            --stack-name RdsStack-${{ env.CDK_CONTEXT }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`RdsEndpoint`].OutputValue' \
-            --output text 2>/dev/null || echo "localhost")
         run: |
           npx cdk deploy --all \
             --require-approval never \
