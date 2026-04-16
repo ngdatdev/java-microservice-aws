@@ -96,7 +96,6 @@ jobs:
 
       # ── Detect what changed → set outputs for conditional jobs ──
       - name: 📡 Detect changed paths
-        id: changes
         run: |
           echo "=== Detecting changed files ==="
           echo "Trigger: ${{ github.event_name }}"
@@ -111,7 +110,7 @@ jobs:
             echo "backend_changed=true" >> $GITHUB_OUTPUT
             echo "infra_changed=true" >> $GITHUB_OUTPUT
             echo "frontend_changed=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}"" == "pull_request" ]; then
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Comparing against base branch: origin/${{ github.base_ref }}"
             BACKEND_CHANGED=false
             for svc in auth-service member-service file-service mail-service master-service; do
@@ -123,7 +122,7 @@ jobs:
             echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
 
             INFRA_CHANGED=false
-            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|\\.github/)"; then
+            if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|[.]github/)"; then
               echo "✓ Infrastructure or CI config changed"
               INFRA_CHANGED=true
             fi
@@ -154,7 +153,7 @@ jobs:
               echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
 
               INFRA_CHANGED=false
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -qE "^(infra/|\\.github/)"; then
+              if git diff --name-only ${{ github.event.before }} HEAD | grep -qE "^(infra/|[.]github/)"; then
                 echo "✓ Infrastructure or CI config changed"
                 INFRA_CHANGED=true
               fi
@@ -231,6 +230,9 @@ jobs:
     needs: verify
     if: github.event_name == 'workflow_dispatch' || needs.verify.outputs.infra_changed == 'true'
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ steps.env.outputs.env }}
+      url: https://${{ vars.AWS_CLOUDFRONT_DOMAIN }}
     permissions:
       id-token: write
       contents: read
@@ -247,13 +249,6 @@ jobs:
             DEPLOY_ENV="production"
           fi
           echo "env=$DEPLOY_ENV" >> $GITHUB_OUTPUT
-
-      # Production cần manual approval
-      - name: 🚦 Environment Protection (Production only)
-        if: steps.env.outputs.env == 'production'
-        run: |
-          echo "Production deployment requires approval gate."
-          echo "Setting environment protection check..."
 
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
@@ -282,10 +277,11 @@ jobs:
       - name: 🚀 Deploy all CDK stacks
         working-directory: ./infra
         run: |
+          ENV=${{ steps.env.outputs.env }}
           npx cdk deploy --all \
             --require-approval never \
-            --context env=${{ steps.env.outputs.env }} \
-            --exclude EcrStack-${{ steps.env.outputs.env }}
+            --context env=$ENV \
+            --exclude "EcrStack-$ENV"
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
