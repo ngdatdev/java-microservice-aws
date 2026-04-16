@@ -151,19 +151,9 @@ jobs:
       - name: 🚀 Deploy all CDK stacks
         working-directory: ./infra
         run: |
-          npx cdk deploy \
-            VpcStack-production \
-            SnsSqsStack-production \
-            RdsStack-production \
-            CognitoStack-production \
-            S3Stack-production \
-            EcsStack-production \
-            ApiGatewayStack-production \
-            CloudFrontStack-production \
-            CloudWatchStack-production \
+          npx cdk deploy --all \
             --require-approval never \
-            --context env=production \
-            --outputs-file cdk-outputs.json
+            --context env=production
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images

@@ -23,24 +23,32 @@ export class EcrStack extends cdk.Stack {
     this.repositories = {};
 
     for (const serviceName of services) {
+      const repoName = `aws-micro-demo/${serviceName}`;
+      let repo: ecr.IRepository;
+
+      try {
+        // Try to import existing repo
+        repo = ecr.Repository.fromRepositoryName(this, `Import${serviceName}`, repoName);
+      } catch {
+        // Repo doesn't exist → create new one
+        repo = new ecr.Repository(this, `Create${serviceName}`, {
+          repositoryName: repoName,
+          removalPolicy: cdk.RemovalPolicy.RETAIN,
+          lifecycleRules: [
+            {
+              description: 'Keep last 10 images',
+              maxImageCount: 10,
+            },
+          ],
+        });
+      }
+
+      this.repositories[serviceName] = repo;
+
       const repoId = serviceName
         .split('-')
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
         .join('') + 'Repo';
-
-      const repo = new ecr.Repository(this, repoId, {
-        repositoryName: `aws-micro-demo/${serviceName}`,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        emptyOnDelete: true,
-        lifecycleRules: [
-          {
-            description: 'Keep last 10 images',
-            maxImageCount: 10,
-          },
-        ],
-      });
-
-      this.repositories[serviceName] = repo;
 
       new cdk.CfnOutput(this, `${repoId}Uri`, {
         value: repo.repositoryUri,
