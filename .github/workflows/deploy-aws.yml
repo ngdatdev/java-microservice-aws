@@ -6,23 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      target:
-        description: 'Component to build & deploy (leave empty = auto-detect via git diff)'
-        required: false
-        default: ''
-        type: choice
-        options:
-          - ''            # auto-detect via git diff
-          - all          # build everything (backend + infra + frontend)
-          - backend      # Java microservices only
-          - auth-service
-          - member-service
-          - file-service
-          - mail-service
-          - master-service
-          - infra
-          - frontend
 
 env:
   AWS_REGION: ap-southeast-1
@@ -83,146 +66,12 @@ jobs:
         working-directory: ./infra
         run: npx cdk synth --context env=production
 
-      # ── Detect what changed → set outputs for conditional jobs ──
-      - name: 📡 Detect changed paths
-        id: changes
-        run: |
-          echo "=== Detecting changed files ==="
-          echo "Trigger: ${{ github.event_name }}"
-          echo "Before: ${{ github.event.before }}"
-          echo "Base ref: ${{ github.base_ref }}"
-
-          # ── Manual trigger override ──────────────────────────
-          MANUAL_TARGET="${{ github.event.inputs.target }}"
-
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "$MANUAL_TARGET" ] && [ "$MANUAL_TARGET" != "''" ]; then
-            echo "Manual trigger with target: $MANUAL_TARGET"
-            case "$MANUAL_TARGET" in
-              all)
-                echo "backend_changed=true" >> $GITHUB_OUTPUT
-                echo "infra_changed=true" >> $GITHUB_OUTPUT
-                echo "frontend_changed=true" >> $GITHUB_OUTPUT
-                ;;
-              backend|auth-service|member-service|file-service|mail-service|master-service)
-                echo "backend_changed=true" >> $GITHUB_OUTPUT
-                echo "infra_changed=false" >> $GITHUB_OUTPUT
-                echo "frontend_changed=false" >> $GITHUB_OUTPUT
-                ;;
-              infra)
-                echo "backend_changed=false" >> $GITHUB_OUTPUT
-                echo "infra_changed=true" >> $GITHUB_OUTPUT
-                echo "frontend_changed=false" >> $GITHUB_OUTPUT
-                ;;
-              frontend)
-                echo "backend_changed=false" >> $GITHUB_OUTPUT
-                echo "infra_changed=false" >> $GITHUB_OUTPUT
-                echo "frontend_changed=true" >> $GITHUB_OUTPUT
-                ;;
-              *)
-                echo "Unknown target: $MANUAL_TARGET — building everything"
-                echo "backend_changed=true" >> $GITHUB_OUTPUT
-                echo "infra_changed=true" >> $GITHUB_OUTPUT
-                echo "frontend_changed=true" >> $GITHUB_OUTPUT
-                ;;
-            esac
-          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "Manual trigger — building everything"
-            echo "backend_changed=true" >> $GITHUB_OUTPUT
-            echo "infra_changed=true" >> $GITHUB_OUTPUT
-            echo "frontend_changed=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Comparing against base branch: origin/${{ github.base_ref }}"
-            BACKEND_CHANGED=false
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/"; then
-                BACKEND_CHANGED=true
-              fi
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^services/.ci-trigger"; then
-                BACKEND_CHANGED=true
-              fi
-              if [ "$BACKEND_CHANGED" == "true" ]; then
-                echo "✓ Backend changed (services or .ci-trigger)"
-              fi
-              echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
-
-              INFRA_CHANGED=false
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE "^(infra/|\\.github/)"; then
-                INFRA_CHANGED=true
-              fi
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^infra/.ci-trigger"; then
-                INFRA_CHANGED=true
-              fi
-              if [ "$INFRA_CHANGED" == "true" ]; then
-                echo "✓ Infrastructure or CI config changed"
-              fi
-              echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
-
-              FRONTEND_CHANGED=false
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/"; then
-                FRONTEND_CHANGED=true
-              fi
-              if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -q "^frontend/.ci-trigger"; then
-                FRONTEND_CHANGED=true
-              fi
-              if [ "$FRONTEND_CHANGED" == "true" ]; then
-                echo "✓ Frontend changed (frontend or .ci-trigger)"
-              fi
-              echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
-          else
-            # Push — check if this is the FIRST push ever (no previous commit)
-            if [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
-              echo "First push ever — building everything"
-              echo "backend_changed=true" >> $GITHUB_OUTPUT
-              echo "infra_changed=true" >> $GITHUB_OUTPUT
-              echo "frontend_changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "Comparing against previous commit: ${{ github.event.before }}"
-              BACKEND_CHANGED=false
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/"; then
-                BACKEND_CHANGED=true
-              fi
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^services/.ci-trigger"; then
-                BACKEND_CHANGED=true
-              fi
-              if [ "$BACKEND_CHANGED" == "true" ]; then
-                echo "✓ Backend changed (services or .ci-trigger)"
-              fi
-              echo "backend_changed=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
-
-              INFRA_CHANGED=false
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -qE "^(infra/|\\.github/)"; then
-                INFRA_CHANGED=true
-              fi
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^infra/.ci-trigger"; then
-                INFRA_CHANGED=true
-              fi
-              if [ "$INFRA_CHANGED" == "true" ]; then
-                echo "✓ Infrastructure or CI config changed"
-              fi
-              echo "infra_changed=$INFRA_CHANGED" >> $GITHUB_OUTPUT
-
-              FRONTEND_CHANGED=false
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^frontend/"; then
-                FRONTEND_CHANGED=true
-              fi
-              if git diff --name-only ${{ github.event.before }} HEAD | grep -q "^frontend/.ci-trigger"; then
-                FRONTEND_CHANGED=true
-              fi
-              if [ "$FRONTEND_CHANGED" == "true" ]; then
-                echo "✓ Frontend changed (frontend or .ci-trigger)"
-              fi
-              echo "frontend_changed=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
-            fi
-          fi
-
   # =========================================================
   # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
   # =========================================================
   build_push_ecr:
     name: Build & Push Docker Images to ECR
     needs: verify
-    if: >-
-      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
-      && needs.verify.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -237,7 +86,6 @@ jobs:
       - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── AWS credentials (OIDC — no long-lived keys) ──────
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -267,9 +115,6 @@ jobs:
   deploy_infrastructure:
     name: Deploy AWS Infrastructure (CDK)
     needs: verify
-    if: >-
-      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
-      && needs.verify.outputs.infra_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -313,15 +158,10 @@ jobs:
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
-  # CDK skips EcsStack when infra code unchanged; ECS service
-  # won't know about new :latest image unless forced.
   # =========================================================
   deploy_ecs:
     name: Force ECS Redeploy (new Docker images)
     needs: verify
-    if: >-
-      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
-      && (needs.verify.outputs.infra_changed == 'true' || needs.verify.outputs.backend_changed == 'true')
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -378,9 +218,6 @@ jobs:
   deploy_frontend:
     name: Deploy Frontend to S3
     needs: verify
-    if: >-
-      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
-      && needs.verify.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -402,7 +239,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ── Get CloudFront domain from CDK outputs ──────────────
       - name: 📡 Get CloudFront domain
         id: cloudfront-domain
         run: |
@@ -418,7 +254,6 @@ jobs:
           echo "domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_OUTPUT
           echo "CloudFront Domain: $CLOUDFRONT_DOMAIN"
 
-      # ── Build Frontend ────────────────────────────────────
       - name: 🏗️ Build Next.js frontend
         working-directory: ./frontend
         env:
@@ -433,7 +268,6 @@ jobs:
           npm ci
           npm run build
 
-      # ── Upload to S3 ──────────────────────────────────────
       - name: 📦 Upload frontend to S3
         working-directory: ./frontend
         run: |
@@ -456,7 +290,6 @@ jobs:
             .next/ \
             s3://$FRONTEND_BUCKET/
 
-      # ── Invalidate CloudFront ──────────────────────────────
       - name: 🔄 Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
