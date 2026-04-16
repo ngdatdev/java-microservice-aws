@@ -9,7 +9,6 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  CDK_CONTEXT: env=production
 
 jobs:
   # =========================================================
@@ -53,7 +52,11 @@ jobs:
 
       - name: 🔍 CDK Synthesize (validation only)
         working-directory: ./infra
-        run: npx cdk synth --context ${{ env.CDK_CONTEXT }}
+        run: |
+          npx cdk synth \
+            --context env=production \
+            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
+            --context aws:region=${{ env.AWS_REGION }}
 
   # =========================================================
   # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
@@ -137,6 +140,8 @@ jobs:
         run: |
           npx cdk bootstrap \
             aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} \
+            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
+            --context aws:region=${{ env.AWS_REGION }} \
             --force 2>/dev/null || true
 
       - name: 🚀 Deploy all CDK stacks
@@ -144,7 +149,9 @@ jobs:
         run: |
           npx cdk deploy --all \
             --require-approval never \
-            --context ${{ env.CDK_CONTEXT }}
+            --context env=production \
+            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
+            --context aws:region=${{ env.AWS_REGION }}
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
@@ -172,12 +179,12 @@ jobs:
 
       - name: 🔄 Force ECS services to pull new images
         run: |
-          CLUSTER="aws-micro-demo-${{ env.CDK_CONTEXT }}"
+          CLUSTER="aws-micro-demo-production"
           for svc in auth-service member-service file-service mail-service master-service; do
             echo "==== Force redeploying $svc ===="
             aws ecs update-service \
               --cluster $CLUSTER \
-              --service ${svc}-${{ env.CDK_CONTEXT }} \
+              --service ${svc}-production \
               --force-new-deployment \
               --output text \
               --query 'service.serviceName' 2>/dev/null \
@@ -187,18 +194,18 @@ jobs:
 
       - name: ⏳ Wait for ECS services to stabilize
         run: |
-          CLUSTER="aws-micro-demo-${{ env.CDK_CONTEXT }}"
+          CLUSTER="aws-micro-demo-production"
           for svc in auth-service member-service file-service mail-service master-service; do
             SERVICE_STATUS=$(aws ecs describe-services \
               --cluster $CLUSTER \
-              --services ${svc}-${{ env.CDK_CONTEXT }} \
+              --services ${svc}-production \
               --query 'services[0].status' \
               --output text 2>/dev/null)
             if [ "$SERVICE_STATUS" == "ACTIVE" ]; then
               echo "==== Waiting for $svc to stabilize ===="
               aws ecs wait services-stable \
                 --cluster $CLUSTER \
-                --services ${svc}-${{ env.CDK_CONTEXT }}
+                --services ${svc}-production
               echo "==== $svc is stable ===="
             else
               echo "==== SKIP: $svc not found (may be first deploy) ===="
@@ -238,11 +245,11 @@ jobs:
         id: cloudfront-domain
         run: |
           CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --stack-name CloudFrontStack-production \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
             --output text)
           if [ -z "$CLOUDFRONT_DOMAIN" ]; then
-            echo "ERROR: CloudFrontStack-${{ env.CDK_CONTEXT }} not found or CloudFrontDomainName output is empty"
+            echo "ERROR: CloudFrontStack-production not found or CloudFrontDomainName output is empty"
             echo "This is expected on first deployment. Run pipeline again after CDK deploy completes."
             exit 1
           fi
@@ -268,7 +275,7 @@ jobs:
       - name: 📦 Upload frontend to S3
         run: |
           FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --stack-name CloudFrontStack-production \
             --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
             --output text)
 
@@ -290,7 +297,7 @@ jobs:
       - name: 🔄 Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-${{ env.CDK_CONTEXT }} \
+            --stack-name CloudFrontStack-production \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
             --output text)
 
