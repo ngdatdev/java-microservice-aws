@@ -50,13 +50,16 @@ jobs:
         working-directory: ./infra
         run: npm ci
 
+      # CDK synth cần AWS credentials để resolve account/region
+      - name: 🔐 Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: 🔍 CDK Synthesize (validation only)
         working-directory: ./infra
-        run: |
-          npx cdk synth \
-            --context env=production \
-            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
-            --context aws:region=${{ env.AWS_REGION }}
+        run: npx cdk synth --context env=production
 
   # =========================================================
   # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
@@ -140,8 +143,6 @@ jobs:
         run: |
           npx cdk bootstrap \
             aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} \
-            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
-            --context aws:region=${{ env.AWS_REGION }} \
             --force 2>/dev/null || true
 
       - name: 🚀 Deploy all CDK stacks
@@ -149,9 +150,7 @@ jobs:
         run: |
           npx cdk deploy --all \
             --require-approval never \
-            --context env=production \
-            --context aws:account=${{ vars.AWS_ACCOUNT_ID }} \
-            --context aws:region=${{ env.AWS_REGION }}
+            --context env=production
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
