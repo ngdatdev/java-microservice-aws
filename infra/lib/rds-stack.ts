@@ -36,10 +36,10 @@ export class RdsStack extends cdk.Stack {
       },
     });
 
-    // T010: RDS PostgreSQL 15.4 instance
+    // T010: RDS PostgreSQL instance
     this.dbInstance = new rds.DatabaseInstance(this, 'DemoRds', {
       engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_15_4,
+        version: rds.PostgresEngineVersion.VER_15_7,
       }),
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.T3,
