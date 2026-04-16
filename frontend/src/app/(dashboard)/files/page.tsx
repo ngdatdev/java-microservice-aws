@@ -25,10 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import axios from "axios";
+import { serviceUrls } from "@/lib/api/client";
 import { FileMetadata } from "@/types/file";
-import apiClient from "@/lib/api/client";
 import { FileUpload } from "@/components/files/file-upload";
 import { toast } from "sonner";
+
+const fileApiClient = axios.create({
+  baseURL: serviceUrls.file,
+  headers: { "Content-Type": "application/json" },
+});
 
 export default function FilesPage() {
   const [files, setFiles] = useState<FileMetadata[]>([]);
@@ -43,7 +49,7 @@ export default function FilesPage() {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/api/v1/files");
+      const response = await fileApiClient.get("/api/v1/files");
       setFiles(response.data);
     } catch (error) {
       console.error("Failed to fetch files:", error);
@@ -55,7 +61,7 @@ export default function FilesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this file?")) return;
     try {
-      await apiClient.delete(`/api/v1/files/${id}`);
+      await fileApiClient.delete(`/api/v1/files/${id}`);
       toast.success("File deleted successfully");
       fetchFiles();
     } catch (error) {

@@ -26,9 +26,15 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Member, MemberRequest } from "@/types/member";
-import apiClient from "@/lib/api/client";
+import axios from "axios";
+import { serviceUrls } from "@/lib/api/client";
 import { MemberForm } from "@/components/forms/member-form";
 import { toast } from "sonner";
+
+const memberApiClient = axios.create({
+  baseURL: serviceUrls.member,
+  headers: { "Content-Type": "application/json" },
+});
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -45,7 +51,7 @@ export default function MembersPage() {
   const fetchMembers = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/api/v1/members");
+      const response = await memberApiClient.get("/api/v1/members");
       setMembers(response.data.data);
     } catch (error) {
       console.error("Failed to fetch members:", error);
@@ -58,10 +64,10 @@ export default function MembersPage() {
     try {
       setIsSaving(true);
       if (selectedMember) {
-        await apiClient.put(`/api/v1/members/${selectedMember.id}`, values);
+        await memberApiClient.put(`/api/v1/members/${selectedMember.id}`, values);
         toast.success("Member updated successfully");
       } else {
-        await apiClient.post("/api/v1/members", values);
+        await memberApiClient.post("/api/v1/members", values);
         toast.success("Member created successfully");
       }
       setIsDialogOpen(false);
@@ -76,7 +82,7 @@ export default function MembersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this member?")) return;
     try {
-      await apiClient.delete(`/api/v1/members/${id}`);
+      await memberApiClient.delete(`/api/v1/members/${id}`);
       toast.success("Member deleted successfully");
       fetchMembers();
     } catch (error) {

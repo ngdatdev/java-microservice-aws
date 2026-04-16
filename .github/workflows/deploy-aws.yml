@@ -34,7 +34,7 @@ jobs:
         run: |
           for svc in member-service file-service mail-service auth-service master-service; do
             echo "==== Building $svc ===="
-            ./mvnw -f services/$svc/pom.xml clean package -DskipTests
+            ./mvnw clean package -DskipTests
           done
 
       # ── CDK synth ────────────────────────────────────────
@@ -75,7 +75,7 @@ jobs:
       - name: 🏗️ Build Java services
         run: |
           for svc in member-service file-service mail-service auth-service master-service; do
-            ./mvnw -f services/$svc/pom.xml clean package -DskipTests
+            ./mvnw clean package -DskipTests
           done
 
       # ── AWS credentials (OIDC — no long-lived keys) ──────

@@ -17,18 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  localstack:
-    image: localstack/localstack:3.0
-    container_name: demo-localstack
-    ports:
-      - "4566:4566"
-    environment:
-
-      - DEFAULT_REGION=ap-southeast-1
-      - DEBUG=1
-    volumes:
-      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init-resources.sh
-
   member-service:
     build: ./services/member-service
     container_name: member-service
@@ -41,7 +29,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/member_db
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=password
-      - LOCALSTACK_URL=http://localstack:4566
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +43,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/file_db
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=password
-      - LOCALSTACK_URL=http://localstack:4566
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +57,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mail_db
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=password
-      - LOCALSTACK_URL=http://localstack:4566
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,7 +71,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=password
-      - LOCALSTACK_URL=http://localstack:4566
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,7 +85,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/master_db
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=password
-      - LOCALSTACK_URL=http://localstack:4566
     depends_on:
       postgres:
         condition: service_healthy

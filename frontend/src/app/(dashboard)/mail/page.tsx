@@ -20,9 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import axios from "axios";
+import { serviceUrls } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
-import apiClient from "@/lib/api/client";
 import { toast } from "sonner";
+
+const mailApiClient = axios.create({
+  baseURL: serviceUrls.mail,
+  headers: { "Content-Type": "application/json" },
+});
 
 interface EmailLog {
   id: string;
@@ -47,7 +53,7 @@ export default function MailPage() {
   const fetchLogs = async () => {
     try {
       setLoadingLogs(true);
-      const response = await apiClient.get("/api/v1/mail/logs");
+      const response = await mailApiClient.get("/api/v1/mail/logs");
       // Pagination structure from Spring Data Page
       setLogs(response.data.content || []); 
     } catch (error) {
@@ -66,7 +72,7 @@ export default function MailPage() {
 
     try {
       setSending(true);
-      await apiClient.post("/api/v1/mail/send", { to, subject, body });
+      await mailApiClient.post("/api/v1/mail/send", { to, subject, body });
       toast.success("Mail request queued successfully via SQS", {
         description: "The mail-service will process this shortly.",
       });
