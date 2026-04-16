@@ -47,6 +47,10 @@ jobs:
           cache: npm
           cache-dependency-path: ./infra/package-lock.json
 
+      - name: 📦 Install CDK dependencies
+        working-directory: ./infra
+        run: npm ci
+
       - name: 🔍 CDK Synthesize (validation only)
         working-directory: ./infra
         run: npx cdk synth --context ${{ env.CDK_CONTEXT }}
@@ -126,9 +130,7 @@ jobs:
 
       - name: 📦 Install CDK dependencies
         working-directory: ./infra
-        run: |
-          npm ci
-          npm install -g aws-cdk@latest
+        run: npm ci
 
       - name: 🔄 CDK Bootstrap (1 lần — bỏ qua nếu đã bootstrap)
         working-directory: ./infra
