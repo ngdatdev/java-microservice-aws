@@ -194,7 +194,9 @@ jobs:
   build_push_ecr:
     name: Build & Push Docker Images to ECR
     needs: verify
-    if: github.ref == 'refs/heads/main' && needs.verify.outputs.backend_changed == 'true'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      && needs.verify.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -239,7 +241,9 @@ jobs:
   deploy_infrastructure:
     name: Deploy AWS Infrastructure (CDK)
     needs: verify
-    if: github.ref == 'refs/heads/main' && needs.verify.outputs.infra_changed == 'true'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      && needs.verify.outputs.infra_changed == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -289,7 +293,9 @@ jobs:
   deploy_ecs:
     name: Force ECS Redeploy (new Docker images)
     needs: verify
-    if: github.ref == 'refs/heads/main' && (needs.verify.outputs.infra_changed == 'true' || needs.verify.outputs.backend_changed == 'true')
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      && (needs.verify.outputs.infra_changed == 'true' || needs.verify.outputs.backend_changed == 'true')
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -346,7 +352,9 @@ jobs:
   deploy_frontend:
     name: Deploy Frontend to S3
     needs: verify
-    if: github.ref == 'refs/heads/main' && needs.verify.outputs.frontend_changed == 'true'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      && needs.verify.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
