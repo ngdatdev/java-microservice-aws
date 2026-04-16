@@ -6,6 +6,23 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Component to build & deploy (leave empty = auto-detect via git diff)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''            # auto-detect via git diff
+          - all          # build everything (backend + infra + frontend)
+          - backend      # Java microservices only
+          - auth-service
+          - member-service
+          - file-service
+          - mail-service
+          - master-service
+          - infra
+          - frontend
 
 env:
   AWS_REGION: ap-southeast-1
@@ -75,10 +92,40 @@ jobs:
           echo "Before: ${{ github.event.before }}"
           echo "Base ref: ${{ github.base_ref }}"
 
-          # Push → compare against the commit before this push
-          # PR → compare against base branch (origin/main)
-          # workflow_dispatch → build everything
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          # ── Manual trigger override ──────────────────────────
+          MANUAL_TARGET="${{ github.event.inputs.target }}"
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "$MANUAL_TARGET" ] && [ "$MANUAL_TARGET" != "''" ]; then
+            echo "Manual trigger with target: $MANUAL_TARGET"
+            case "$MANUAL_TARGET" in
+              all)
+                echo "backend_changed=true" >> $GITHUB_OUTPUT
+                echo "infra_changed=true" >> $GITHUB_OUTPUT
+                echo "frontend_changed=true" >> $GITHUB_OUTPUT
+                ;;
+              backend|auth-service|member-service|file-service|mail-service|master-service)
+                echo "backend_changed=true" >> $GITHUB_OUTPUT
+                echo "infra_changed=false" >> $GITHUB_OUTPUT
+                echo "frontend_changed=false" >> $GITHUB_OUTPUT
+                ;;
+              infra)
+                echo "backend_changed=false" >> $GITHUB_OUTPUT
+                echo "infra_changed=true" >> $GITHUB_OUTPUT
+                echo "frontend_changed=false" >> $GITHUB_OUTPUT
+                ;;
+              frontend)
+                echo "backend_changed=false" >> $GITHUB_OUTPUT
+                echo "infra_changed=false" >> $GITHUB_OUTPUT
+                echo "frontend_changed=true" >> $GITHUB_OUTPUT
+                ;;
+              *)
+                echo "Unknown target: $MANUAL_TARGET — building everything"
+                echo "backend_changed=true" >> $GITHUB_OUTPUT
+                echo "infra_changed=true" >> $GITHUB_OUTPUT
+                echo "frontend_changed=true" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger — building everything"
             echo "backend_changed=true" >> $GITHUB_OUTPUT
             echo "infra_changed=true" >> $GITHUB_OUTPUT
