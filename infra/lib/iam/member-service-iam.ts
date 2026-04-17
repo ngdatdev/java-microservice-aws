@@ -55,19 +55,28 @@ export function createMemberServiceIAM(scope: Construct, props: MemberServiceIAM
 }
 
 /**
- * Member Service Execution Role — Permissions: pull image + write logs
+ * Member Service Execution Role — Permissions: pull image + write logs + read secrets
  */
 export function createMemberServiceExecutionRole(scope: Construct, props: MemberServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'MemberServiceExecutionRole', {
     roleName: `member-service-execution-role-${envName}`,
-    description: 'Execution role for member-service ECS task (pull image, logs)',
+    description: 'Execution role for member-service ECS task (pull image, logs, secrets)',
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     managedPolicies: [
       iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
     ],
   });
+
+  executionRole.addToPolicy(
+    new iam.PolicyStatement({
+      sid: 'SecretsManagerReadForInjection',
+      effect: iam.Effect.ALLOW,
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: ['*'], // Restrict to specific secret ARN in production
+    })
+  );
 
   return executionRole;
 }

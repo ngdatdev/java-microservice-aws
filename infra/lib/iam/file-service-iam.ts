@@ -63,19 +63,28 @@ export function createFileServiceIAM(scope: Construct, props: FileServiceIAMProp
 }
 
 /**
- * File Service Execution Role — Permissions: pull image + write logs
+ * File Service Execution Role — Permissions: pull image + write logs + read secrets
  */
 export function createFileServiceExecutionRole(scope: Construct, props: FileServiceExecutionRoleProps): iam.Role {
   const { envName } = props;
 
   const executionRole = new iam.Role(scope, 'FileServiceExecutionRole', {
     roleName: `file-service-execution-role-${envName}`,
-    description: 'Execution role for file-service ECS task (pull image, logs)',
+    description: 'Execution role for file-service ECS task (pull image, logs, secrets)',
     assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     managedPolicies: [
       iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
     ],
   });
+
+  executionRole.addToPolicy(
+    new iam.PolicyStatement({
+      sid: 'SecretsManagerReadForInjection',
+      effect: iam.Effect.ALLOW,
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: ['*'], // Restrict to specific secret ARN in production
+    })
+  );
 
   return executionRole;
 }

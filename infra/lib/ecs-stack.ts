@@ -275,6 +275,7 @@ export class EcsStack extends cdk.Stack {
           name: svcDef.name,
           cloudMapNamespace: namespace,
         },
+        healthCheckGracePeriod: cdk.Duration.seconds(120),
       });
 
       this.services[svcDef.name] = fargateService;
@@ -291,7 +292,9 @@ export class EcsStack extends cdk.Stack {
         })],
         healthCheck: {
           port: String(svcDef.port),
-          interval: cdk.Duration.seconds(30),
+          interval: cdk.Duration.seconds(60),
+          healthyThresholdCount: 2,
+          unhealthyThresholdCount: 3,
         },
       });
 
