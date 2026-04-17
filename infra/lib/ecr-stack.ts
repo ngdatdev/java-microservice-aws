@@ -34,15 +34,14 @@ export class EcrStack extends cdk.Stack {
         repo = new ecr.Repository(this, `Create${serviceName}`, {
           repositoryName: repoName,
           removalPolicy: cdk.RemovalPolicy.RETAIN,
+          lifecycleRules: [
+            {
+              description: 'Keep last 10 images',
+              maxImageCount: 10,
+            },
+          ],
         });
       }
-
-      // Always apply lifecycle rule (works for both imported and new repos)
-      (repo as ecr.Repository).addLifecycleRule({
-        description: 'Keep last 10 images',
-        maxImageCount: 10,
-        tagStatus: ecr.TagStatus.ANY,
-      });
 
       this.repositories[serviceName] = repo;
 
