@@ -160,7 +160,7 @@ jobs:
   # =========================================================
   deploy_ecs:
     name: Force ECS Redeploy (new Docker images)
-    needs: verify
+    needs: [verify, build_push_ecr, deploy_infrastructure]
     runs-on: ubuntu-latest
     environment: production
     permissions:

@@ -65,6 +65,7 @@ export class EcsStack extends cdk.Stack {
   public readonly cluster: ecs.ICluster;
   public readonly nlb: elbv2.INetworkLoadBalancer;
   public readonly services: Record<string, ecs.FargateService>;
+  public readonly listenerArns: Record<string, string>;
 
   constructor(scope: Construct, id: string, props: EcsStackProps) {
     super(scope, id, props);
@@ -153,6 +154,8 @@ export class EcsStack extends cdk.Stack {
     };
 
     // Map service name -> environment variables
+    this.listenerArns = {};
+
     const serviceEnvVars: Record<string, Record<string, string>> = {
       'auth-service': {
         DB_HOST: dbHost,
@@ -293,11 +296,12 @@ export class EcsStack extends cdk.Stack {
       });
 
       // NLB listener — target group will be registered by ApiGatewayNlbStack
-      this.nlb.addListener(`${svcId}NlbListener`, {
+      const listener = this.nlb.addListener(`${svcId}NlbListener`, {
         port: svcDef.port,
         protocol: elbv2.Protocol.TCP,
         defaultAction: elbv2.NetworkListenerAction.forward([nlbTargetGroup]),
       });
+      this.listenerArns[svcDef.port] = listener.listenerArn;
     }
 
     // Outputs
@@ -315,5 +319,14 @@ export class EcsStack extends cdk.Stack {
       description: 'Internal NLB ARN for VPC Link',
       exportName: `${envName}-NlbArn`,
     });
+
+    // Export listener ARNs for ApiGatewayStack
+    for (const [port, arn] of Object.entries(this.listenerArns)) {
+      new cdk.CfnOutput(this, `NlbListener${port}Arn`, {
+        value: arn,
+        description: `NLB listener ARN for port ${port}`,
+        exportName: `${envName}-NlbListener${port}Arn`,
+      });
+    }
   }
 }

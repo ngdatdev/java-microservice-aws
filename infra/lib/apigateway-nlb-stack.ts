@@ -16,7 +16,6 @@ export interface RouteConfig {
 export interface ApiGatewayNlbStackProps extends cdk.StackProps {
   envName: string;
   vpc: ec2.IVpc;
-  nlb: elbv2.INetworkLoadBalancer;
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
 }
@@ -35,7 +34,7 @@ export class ApiGatewayNlbStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiGatewayNlbStackProps) {
     super(scope, id, props);
 
-    const { envName, vpc, nlb, userPool, userPoolClient } = props;
+    const { envName, vpc, userPool, userPoolClient } = props;
 
     // T018: VPC Link to internal NLB
     const vpcLink = new apigwv2.VpcLink(this, 'DemoVpcLink', {
@@ -74,13 +73,15 @@ export class ApiGatewayNlbStack extends cdk.Stack {
 
     // T019: Routes with/without JWT authorization per contract
     for (const route of ROUTE_CONFIGS) {
+      const listenerArn = cdk.Fn.importValue(`${envName}-NlbListener${route.port}Arn`);
+      const nlbListener = elbv2.NetworkListener.fromNetworkListenerArn(
+        this,
+        `NlbListener${route.port}`,
+        listenerArn,
+      );
       const integration = new apigwv2_integrations.HttpNlbIntegration(
         `NlbIntegration${route.port}`,
-        elbv2.NetworkListener.fromNetworkListenerArn(
-          this,
-          `NlbListener${route.port}`,
-          `${nlb.loadBalancerArn}:listener/${route.port}`,
-        ),
+        nlbListener,
         {
           vpcLink,
         },

@@ -85,7 +85,6 @@ ecsStack.addDependency(s3Stack);
 const apiGatewayStack = new ApiGatewayNlbStack(app, `ApiGatewayStack-${envName}`, {
   ...stackProps,
   vpc: vpcStack.vpc,
-  nlb: ecsStack.nlb,
   userPool: cognitoStack.userPool,
   userPoolClient: cognitoStack.userPoolClient,
 });
