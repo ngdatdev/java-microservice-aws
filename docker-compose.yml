@@ -22,13 +22,10 @@ services:
     container_name: member-service
     ports:
       - "8081:8080"
+    env_file: .env
     environment:
+      - DB_NAME=member_db
       - DB_HOST=postgres
-      - DB_USER=admin
-      - DB_PASSWORD=password
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/member_db
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,11 +35,10 @@ services:
     container_name: file-service
     ports:
       - "8082:8080"
+    env_file: .env
     environment:
+      - DB_NAME=file_db
       - DB_HOST=postgres
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/file_db
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,11 +48,10 @@ services:
     container_name: mail-service
     ports:
       - "8083:8080"
+    env_file: .env
     environment:
+      - DB_NAME=mail_db
       - DB_HOST=postgres
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mail_db
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,11 +61,10 @@ services:
     container_name: auth-service
     ports:
       - "8084:8080"
+    env_file: .env
     environment:
+      - DB_NAME=auth_db
       - DB_HOST=postgres
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,11 +74,10 @@ services:
     container_name: master-service
     ports:
       - "8085:8080"
+    env_file: .env
     environment:
+      - DB_NAME=master_db
       - DB_HOST=postgres
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/master_db
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
       postgres:
         condition: service_healthy

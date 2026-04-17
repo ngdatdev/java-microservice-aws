@@ -2,9 +2,9 @@ name: AWS CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   pull_request:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
 
 env:
@@ -66,7 +66,7 @@ jobs:
 
       - name: 🔍 CDK Synthesize (validation only)
         working-directory: ./infra
-        run: npx cdk synth --context env=production
+        run: npx cdk synth --context env=develop
 
   # =========================================================
   # JOB 2: BUILD & PUSH DOCKER IMAGES → ECR
@@ -118,7 +118,7 @@ jobs:
     name: Deploy AWS Infrastructure (CDK)
     needs: verify
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     permissions:
       id-token: write
       contents: read
@@ -155,7 +155,7 @@ jobs:
         run: |
           npx cdk deploy --all \
             --require-approval never \
-            --context env=production
+            --context env=develop
 
   # =========================================================
   # JOB 4: FORCE ECS REDEPLOY — Pull new ECR images
@@ -164,7 +164,7 @@ jobs:
     name: Force ECS Redeploy (new Docker images)
     needs: [verify, build_push_ecr, deploy_infrastructure]
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     permissions:
       id-token: write
       contents: read
@@ -180,12 +180,12 @@ jobs:
 
       - name: 🔄 Force ECS services to pull new images
         run: |
-          CLUSTER="aws-micro-demo-production"
+          CLUSTER="aws-micro-demo-develop"
           for svc in auth-service member-service file-service mail-service master-service; do
             echo "==== Force redeploying $svc ===="
             aws ecs update-service \
               --cluster $CLUSTER \
-              --service ${svc}-production \
+              --service ${svc}-develop \
               --force-new-deployment \
               --output text \
               --query 'service.serviceName' 2>/dev/null \
@@ -195,18 +195,18 @@ jobs:
 
       - name: ⏳ Wait for ECS services to stabilize
         run: |
-          CLUSTER="aws-micro-demo-production"
+          CLUSTER="aws-micro-demo-develop"
           for svc in auth-service member-service file-service mail-service master-service; do
             SERVICE_STATUS=$(aws ecs describe-services \
               --cluster $CLUSTER \
-              --services ${svc}-production \
+              --services ${svc}-develop \
               --query 'services[0].status' \
               --output text 2>/dev/null) || continue
             if [ "$SERVICE_STATUS" == "ACTIVE" ]; then
               echo "==== Waiting for $svc to stabilize ===="
               aws ecs wait services-stable \
                 --cluster $CLUSTER \
-                --services ${svc}-production 2>/dev/null || echo "==== SKIP: $svc wait timeout ===="
+                --services ${svc}-develop 2>/dev/null || echo "==== SKIP: $svc wait timeout ===="
               echo "==== $svc is stable ===="
             else
               echo "==== SKIP: $svc not found (may be first deploy) ===="
@@ -244,11 +244,11 @@ jobs:
         id: cloudfront-domain
         run: |
           CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-production \
+            --stack-name CloudFrontStack-develop \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
             --output text 2>/dev/null) || true
           if [ -z "$CLOUDFRONT_DOMAIN" ]; then
-            echo "WARNING: CloudFrontStack-production not found — skipping frontend deploy."
+            echo "WARNING: CloudFrontStack-develop not found — skipping frontend deploy."
             echo "domain=" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -274,7 +274,7 @@ jobs:
         working-directory: ./frontend
         run: |
           FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-production \
+            --stack-name CloudFrontStack-develop \
             --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
             --output text)
 
@@ -295,7 +295,7 @@ jobs:
       - name: 🔄 Invalidate CloudFront cache
         run: |
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-            --stack-name CloudFrontStack-production \
+            --stack-name CloudFrontStack-develop \
             --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
             --output text)
 
