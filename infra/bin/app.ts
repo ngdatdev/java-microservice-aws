@@ -58,6 +58,7 @@ const ecsStack = new EcsStack(app, `EcsStack-${envName}`, {
   repositories: ecrStack.repositories,
   dbSecret: rdsStack.dbSecret,
   dbHost: rdsStack.dbInstance.dbInstanceEndpointAddress,
+  dbName: rdsStack.dbName,
   // ARN inputs for IAM + environment variables
   userPoolArn: cognitoStack.userPool.userPoolArn,
   cognitoUserPoolId: (cognitoStack.userPool as any).userPoolId,

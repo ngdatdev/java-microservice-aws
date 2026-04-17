@@ -34,6 +34,7 @@ export interface EcsStackProps extends cdk.StackProps {
   dbSecret: secretsmanager.ISecret;
   // RDS connection
   dbHost: string;
+  dbName: string;
   // Cognito
   userPoolArn: string;
   cognitoUserPoolId: string;
@@ -71,7 +72,7 @@ export class EcsStack extends cdk.Stack {
     super(scope, id, props);
 
     const { envName, vpc, ecsSg, nlbSg, repositories, dbSecret,
-            dbHost, userPoolArn, cognitoUserPoolId, cognitoClientId,
+            dbHost, dbName, userPoolArn, cognitoUserPoolId, cognitoClientId,
             memberEventsTopicArn, fileEventsTopicArn, notificationsTopicArn,
             mailQueueArn, mailQueueUrl, memberEventQueueUrl, memberEventQueueArn,
             storageBucketArn, storageBucketName, awsRegion } = props;
@@ -159,34 +160,34 @@ export class EcsStack extends cdk.Stack {
     const serviceEnvVars: Record<string, Record<string, string>> = {
       'auth-service': {
         DB_HOST: dbHost,
-        DB_NAME: 'auth_db',
+        DB_NAME: dbName,
         AWS_REGION: awsRegion,
         AWS_COGNITO_USER_POOL_ID: cognitoUserPoolId,
         AWS_COGNITO_CLIENT_ID: cognitoClientId,
       },
       'member-service': {
         DB_HOST: dbHost,
-        DB_NAME: 'member_db',
+        DB_NAME: dbName,
         AWS_REGION: awsRegion,
         AWS_SNS_MEMBER_EVENTS_TOPIC_ARN: memberEventsTopicArn,
         AWS_SQS_AUDIT_QUEUE_URL: memberEventQueueUrl,
       },
       'file-service': {
         DB_HOST: dbHost,
-        DB_NAME: 'file_db',
+        DB_NAME: dbName,
         AWS_REGION: awsRegion,
         AWS_S3_BUCKET_NAME: storageBucketName,
         AWS_SNS_FILE_EVENTS_TOPIC_ARN: fileEventsTopicArn,
       },
       'mail-service': {
         DB_HOST: dbHost,
-        DB_NAME: 'mail_db',
+        DB_NAME: dbName,
         AWS_REGION: awsRegion,
         AWS_SQS_MAIL_QUEUE_URL: mailQueueUrl,
       },
       'master-service': {
         DB_HOST: dbHost,
-        DB_NAME: 'master_db',
+        DB_NAME: dbName,
         AWS_REGION: awsRegion,
         // Inter-service URLs via Cloud Map DNS
         MEMBER_SERVICE_URL: 'http://member-service.service.local:8081',
