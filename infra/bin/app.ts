@@ -113,7 +113,7 @@ const serviceNames = [
 
 const cloudWatchStack = new CloudWatchStack(app, `CloudWatchStack-${envName}`, {
   ...stackProps,
-  cluster: ecsStack.cluster,
+  clusterName: `aws-micro-demo-${envName}`,
   serviceNames,
   mailDlqArn: snsSqsStack.mailServiceQueue.queueArn.replace('aws-micro-demo-mail-queue', 'aws-micro-demo-mail-dlq'),
 });

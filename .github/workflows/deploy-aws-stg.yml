@@ -61,7 +61,7 @@ jobs:
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN_STG }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 🔍 CDK Synthesize (validation only)
@@ -91,7 +91,7 @@ jobs:
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN_STG }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 🐳 Login to Amazon ECR
@@ -136,7 +136,7 @@ jobs:
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN_STG }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 📦 Install CDK dependencies
@@ -175,7 +175,7 @@ jobs:
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN_STG }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 🔄 Force ECS services to pull new images
@@ -237,7 +237,7 @@ jobs:
       - name: 🔐 Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN_STG }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: 📡 Get CloudFront domain

@@ -4,11 +4,10 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
 
 export interface CloudWatchStackProps extends cdk.StackProps {
   envName: string;
-  cluster: ecs.ICluster;
+  clusterName: string;
   serviceNames: string[];
   mailDlqArn: string;
 }
@@ -19,7 +18,7 @@ export class CloudWatchStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: CloudWatchStackProps) {
     super(scope, id, props);
 
-    const { envName, cluster, serviceNames } = props;
+    const { envName, clusterName, serviceNames } = props;
 
     // T025: SNS Notification Topic for Alarms
     this.alarmTopic = new sns.Topic(this, 'AlarmNotificationTopic', {
@@ -50,7 +49,7 @@ export class CloudWatchStack extends cdk.Stack {
         namespace: 'AWS/ECS',
         metricName: 'CPUUtilization',
         dimensionsMap: {
-          ClusterName: cluster.clusterName,
+          ClusterName: clusterName,
           ServiceName: fullServiceName,
         },
         statistic: 'Average',
@@ -62,7 +61,7 @@ export class CloudWatchStack extends cdk.Stack {
         namespace: 'AWS/ECS',
         metricName: 'MemoryUtilization',
         dimensionsMap: {
-          ClusterName: cluster.clusterName,
+          ClusterName: clusterName,
           ServiceName: fullServiceName,
         },
         statistic: 'Average',
